@@ -41,8 +41,8 @@
         "loss_type": "vanilla", // TODO: this is not used now, but will be used in future to test mutliple loss functions
         "finetune_norm": false,
         "unet": {
-            "in_channel": 2,
-            "out_channel": 1,
+            "in_channel": 3, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
+            "out_channel": 2,
             "inner_channel": 16,
             "norm_groups": 16,
             "channel_multiplier": [

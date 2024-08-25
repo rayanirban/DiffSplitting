@@ -50,7 +50,7 @@ def _load_data_fpath(fpath:str):
     return {0: [x for x in data_ch0], 1: [x for x in data_ch1]}
 
 class SplitDataset:
-    def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = 0,normalization_dict=None):
+    def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = None,normalization_dict=None):
 
         self._patch_size = patch_size
         self._data_location = data_location
