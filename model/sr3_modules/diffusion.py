@@ -187,9 +187,11 @@ class GaussianDiffusion(nn.Module):
                     ret_img = torch.cat([ret_img, img], dim=0)
         else:
             x = x_in
-            shape = x.shape
+            shape = list(x.shape)
+            shape[1] = self.channels
+            shape = tuple(shape)
             img = torch.randn(shape, device=device)
-            ret_img = x
+            ret_img = x.repeat((1, self.channels, 1, 1))  # just to allow for easy concatenation
             for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
                 img = self.p_sample(img, i, condition_x=x)
                 if i % sample_inter == 0:

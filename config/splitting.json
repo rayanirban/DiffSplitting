@@ -76,7 +76,7 @@
         },
         "diffusion": {
             "image_size": 512,
-            "channels": 3, //sample channel
+            "channels": 2, //sample channel
             "conditional": true // unconditional generation or unconditional generation(super_resolution)
         }
     },
