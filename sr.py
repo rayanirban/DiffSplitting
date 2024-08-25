@@ -6,7 +6,8 @@ import logging
 import core.logger as Logger
 import core.metrics as Metrics
 from core.wandb_logger import WandbLogger
-from tensorboardX import SummaryWriter
+from data.split_dataset import SplitDataset, DataLocation
+# from tensorboardX import SummaryWriter
 import os
 import numpy as np
 
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('-enable_wandb', action='store_true')
     parser.add_argument('-log_wandb_ckpt', action='store_true')
     parser.add_argument('-log_eval', action='store_true')
+    parser.add_argument('-rootdir', type=str, default='/group/jug/ashesh/training/diffsplit')
 
     # parse configs
     args = parser.parse_args()
@@ -37,12 +39,12 @@ if __name__ == "__main__":
     Logger.setup_logger('val', opt['path']['log'], 'val', level=logging.INFO)
     logger = logging.getLogger('base')
     logger.info(Logger.dict2str(opt))
-    tb_logger = SummaryWriter(log_dir=opt['path']['tb_logger'])
+    # tb_logger = SummaryWriter(log_dir=opt['path']['tb_logger'])
 
     # Initialize WandbLogger
     if opt['enable_wandb']:
         import wandb
-        wandb_logger = WandbLogger(opt)
+        wandb_logger = WandbLogger(opt, opt['path']['experiment_root'], opt['experiment_name'])
         wandb.define_metric('validation/val_step')
         wandb.define_metric('epoch')
         wandb.define_metric("validation/*", step_metric="val_step")
@@ -50,16 +52,29 @@ if __name__ == "__main__":
     else:
         wandb_logger = None
 
+    patch_size = opt['datasets']['train']['patch_size']
+    
+    train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
+                                                    opt['datasets']['train']['datapath']['ch1']))
+    
+    train_set = SplitDataset(train_data_location, patch_size, normalization_dict=None)
+    train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
+
+    patch_size = opt['datasets']['val']['patch_size']
+    val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
+                                                    opt['datasets']['val']['datapath']['ch1']))
+    val_set = SplitDataset(val_data_location, patch_size, normalization_dict=train_set.get_normalization_dict())
+    val_loader = Data.create_dataloader(val_set, opt['datasets']['val'], 'val')
     # dataset
-    for phase, dataset_opt in opt['datasets'].items():
-        if phase == 'train' and args.phase != 'val':
-            train_set = Data.create_dataset(dataset_opt, phase)
-            train_loader = Data.create_dataloader(
-                train_set, dataset_opt, phase)
-        elif phase == 'val':
-            val_set = Data.create_dataset(dataset_opt, phase)
-            val_loader = Data.create_dataloader(
-                val_set, dataset_opt, phase)
+    # for phase, dataset_opt in opt['datasets'].items():
+    #     if phase == 'train' and args.phase != 'val':
+    #         train_set = Data.create_dataset(dataset_opt, phase)
+    #         train_loader = Data.create_dataloader(
+    #             train_set, dataset_opt, phase)
+    #     elif phase == 'val':
+    #         val_set = Data.create_dataset(dataset_opt, phase)
+    #         val_loader = Data.create_dataloader(
+    #             val_set, dataset_opt, phase)
     logger.info('Initial Dataset Finished')
 
     # model
@@ -93,7 +108,7 @@ if __name__ == "__main__":
                         current_epoch, current_step)
                     for k, v in logs.items():
                         message += '{:s}: {:.4e} '.format(k, v)
-                        tb_logger.add_scalar(k, v, current_step)
+                        # tb_logger.add_scalar(k, v, current_step)
                     logger.info(message)
 
                     if wandb_logger:
@@ -128,11 +143,11 @@ if __name__ == "__main__":
                             lr_img, '{}/{}_{}_lr.png'.format(result_path, current_step, idx))
                         Metrics.save_img(
                             fake_img, '{}/{}_{}_inf.png'.format(result_path, current_step, idx))
-                        tb_logger.add_image(
-                            'Iter_{}'.format(current_step),
-                            np.transpose(np.concatenate(
-                                (fake_img, sr_img, hr_img), axis=1), [2, 0, 1]),
-                            idx)
+                        # tb_logger.add_image(
+                            # 'Iter_{}'.format(current_step),
+                            # np.transpose(np.concatenate(
+                                # (fake_img, sr_img, hr_img), axis=1), [2, 0, 1]),
+                            # idx)
                         avg_psnr += Metrics.calculate_psnr(
                             sr_img, hr_img)
 
@@ -151,7 +166,7 @@ if __name__ == "__main__":
                     logger_val.info('<epoch:{:3d}, iter:{:8,d}> psnr: {:.4e}'.format(
                         current_epoch, current_step, avg_psnr))
                     # tensorboard logger
-                    tb_logger.add_scalar('psnr', avg_psnr, current_step)
+                    # tb_logger.add_scalar('psnr', avg_psnr, current_step)
 
                     if wandb_logger:
                         wandb_logger.log_metrics({

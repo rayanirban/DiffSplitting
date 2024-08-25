@@ -241,3 +241,11 @@ class UNet(nn.Module):
                 x = layer(x)
 
         return self.final_conv(x)
+
+
+if __name__ == "__main__":
+    model = UNet(attn_res=[])
+    x = torch.randn(1, 6, 128, 128)
+    time = torch.randn(1, 1)
+    out = model(x, time)
+    print(out.shape)

@@ -4,7 +4,7 @@ import logging
 from collections import OrderedDict
 import json
 from datetime import datetime
-
+from core.experiment_directory_setup import get_workdir
 
 def mkdirs(paths):
     if isinstance(paths, str):
@@ -30,16 +30,18 @@ def parse(args):
             line = line.split('//')[0] + '\n'
             json_str += line
     opt = json.loads(json_str, object_pairs_hook=OrderedDict)
-
+    experiment_root, expname = get_workdir(opt, args.rootdir, use_max_version=False)
+    
     # set log directory
     if args.debug:
         opt['name'] = 'debug_{}'.format(opt['name'])
-    experiments_root = os.path.join(
-        'experiments', '{}_{}'.format(opt['name'], get_timestamp()))
-    opt['path']['experiments_root'] = experiments_root
+
+    opt['path']['experiment_root'] = experiment_root
+    opt['experiment_name'] = expname
+    
     for key, path in opt['path'].items():
         if 'resume' not in key and 'experiments' not in key:
-            opt['path'][key] = os.path.join(experiments_root, path)
+            opt['path'][key] = os.path.join(experiment_root, path)
             mkdirs(opt['path'][key])
 
     # change dataset length limit

@@ -1,26 +1,21 @@
 import os
+import wandb
 
 class WandbLogger:
     """
     Log using `Weights and Biases`.
     """
-    def __init__(self, opt):
-        try:
-            import wandb
-        except ImportError:
-            raise ImportError(
-                "To use the Weights and Biases Logger please install wandb."
-                "Run `pip install wandb` to install it."
-            )
-        
+    def __init__(self, opt, logdir, name):
+        self._logdir = logdir
+        self._name = name
         self._wandb = wandb
-
         # Initialize a W&B run
         if self._wandb.run is None:
             self._wandb.init(
                 project=opt['wandb']['project'],
                 config=opt,
-                dir='./experiments'
+                dir=self._logdir,
+                name=self._name,
             )
 
         self.config = self._wandb.config

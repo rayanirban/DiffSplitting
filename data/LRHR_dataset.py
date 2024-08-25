@@ -1,5 +1,4 @@
 from io import BytesIO
-import lmdb
 from PIL import Image
 from torch.utils.data import Dataset
 import random
@@ -16,6 +15,7 @@ class LRHRDataset(Dataset):
         self.split = split
 
         if datatype == 'lmdb':
+            import lmdb
             self.env = lmdb.open(dataroot, readonly=True, lock=False,
                                  readahead=False, meminit=False)
             # init the datalen
