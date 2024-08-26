@@ -56,13 +56,15 @@ if __name__ == "__main__":
     train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
                                                     opt['datasets']['train']['datapath']['ch1']))
     
-    train_set = SplitDataset(train_data_location, patch_size, normalization_dict=None)
+    train_set = SplitDataset(train_data_location, patch_size, normalization_dict=None, enable_transforms=True,random_patching=True)
     train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
     patch_size = opt['datasets']['val']['patch_size']
     val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
                                                     opt['datasets']['val']['datapath']['ch1']))
-    val_set = SplitDataset(val_data_location, patch_size, normalization_dict=train_set.get_normalization_dict())
+    val_set = SplitDataset(val_data_location, patch_size, normalization_dict=train_set.get_normalization_dict(),
+                           enable_transforms=False,
+                                                     random_patching=False)
     val_loader = Data.create_dataloader(val_set, opt['datasets']['val'], 'val')
     # dataset
     # for phase, dataset_opt in opt['datasets'].items():
@@ -125,30 +127,41 @@ if __name__ == "__main__":
                         opt['model']['beta_schedule']['val'], schedule_phase='val')
                     for _,  val_data in enumerate(val_loader):
                         idx += 1
+                        if idx == 20:
+                            break
                         diffusion.feed_data(val_data)
                         diffusion.test(continous=False)
                         visuals = diffusion.get_current_visuals()
-                        input_img = Metrics.tensor2img(visuals['input'])  # uint8
-                        target_img = Metrics.tensor2img(visuals['target'])  # uint8
+                        # input, target, prediction = unnormalize_data(visuals,train_set.get_normalization_dict())
+                        input = visuals['input']
+                        target = visuals['target']
+                        prediction = visuals['prediction']
+                        input_img = Metrics.tensor2img(input, min_max=[input.min(), input.max()])  # uint8
+                        target_arr = []
+                        pred_arr = []
+                        for ch_idx in range(target.shape[1]):
+                            tar_min_max = [target[:,ch_idx].min(), 
+                                           target[:,ch_idx].max()]
+                            assert target.shape[0] ==1
+                            target_img = Metrics.tensor2img(target[0,ch_idx], min_max=tar_min_max)  # uint8
+                            pred_img = Metrics.tensor2img(prediction[ch_idx], min_max=tar_min_max)  # uint8
+                            target_arr.append(target_img[...,None])
+                            pred_arr.append(pred_img[...,None])
+                        
+                        target_img = np.concatenate(target_arr, axis=2)
+                        pred_img = np.concatenate(pred_arr, axis=2)
                         # lr_img = Metrics.tensor2img(visuals['LR'])  # uint8
-                        fake_img = Metrics.tensor2img(visuals['INF'])  # uint8
+                        # fake_img = Metrics.tensor2img(visuals['INF'])  # uint8
 
                         # generation
                         Metrics.save_img(
-                            target_img, '{}/{}_{}_hr.png'.format(result_path, current_step, idx))
+                            target_img, '{}/{}_{}_target.png'.format(result_path, current_step, idx))
                         Metrics.save_img(
-                            input_img, '{}/{}_{}_sr.png'.format(result_path, current_step, idx))
-                        # Metrics.save_img(
-                        #     lr_img, '{}/{}_{}_lr.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(
-                            fake_img, '{}/{}_{}_inf.png'.format(result_path, current_step, idx))
-                        # tb_logger.add_image(
-                            # 'Iter_{}'.format(current_step),
-                            # np.transpose(np.concatenate(
-                                # (fake_img, input_img, target_img), axis=1), [2, 0, 1]),
-                            # idx)
+                            input_img, '{}/{}_{}_input.png'.format(result_path, current_step, idx))
+                        Metrics.save_img(pred_img, '{}/{}_{}_pred.png'.format(result_path, current_step, idx))
+                        
                         avg_psnr += Metrics.calculate_psnr(
-                            input_img, target_img)
+                            pred_img, target_img)
 
                         if wandb_logger:
                             wandb_logger.log_image(

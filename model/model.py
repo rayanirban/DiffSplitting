@@ -61,10 +61,10 @@ class DDPM(BaseModel):
         self.netG.eval()
         with torch.no_grad():
             if isinstance(self.netG, nn.DataParallel):
-                self.SR = self.netG.module.super_resolution(
+                self.prediction = self.netG.module.super_resolution(
                     self.data['input'], continous)
             else:
-                self.SR = self.netG.super_resolution(
+                self.prediction = self.netG.super_resolution(
                     self.data['input'], continous)
         self.netG.train()
 
@@ -72,9 +72,9 @@ class DDPM(BaseModel):
         self.netG.eval()
         with torch.no_grad():
             if isinstance(self.netG, nn.DataParallel):
-                self.SR = self.netG.module.sample(batch_size, continous)
+                self.prediction = self.netG.module.sample(batch_size, continous)
             else:
-                self.SR = self.netG.sample(batch_size, continous)
+                self.prediction = self.netG.sample(batch_size, continous)
         self.netG.train()
 
     def set_loss(self):
@@ -98,15 +98,15 @@ class DDPM(BaseModel):
     def get_current_visuals(self, need_LR=True, sample=False):
         out_dict = OrderedDict()
         if sample:
-            out_dict['SAM'] = self.SR.detach().float().cpu()
+            out_dict['SAM'] = self.prediction.detach().float().cpu()
         else:
-            out_dict['input'] = self.SR.detach().float().cpu()
-            out_dict['INF'] = self.data['input'].detach().float().cpu()
+            out_dict['prediction'] = self.prediction.detach().float().cpu()
+            out_dict['input'] = self.data['input'].detach().float().cpu()
             out_dict['target'] = self.data['target'].detach().float().cpu()
-            if need_LR and 'LR' in self.data:
-                out_dict['LR'] = self.data['LR'].detach().float().cpu()
-            else:
-                out_dict['LR'] = out_dict['INF']
+            # if need_LR and 'LR' in self.data:
+            #     out_dict['LR'] = self.data['LR'].detach().float().cpu()
+            # else:
+            #     out_dict['LR'] = out_dict['INF']
         return out_dict
 
     def print_network(self):

@@ -50,7 +50,9 @@ def _load_data_fpath(fpath:str):
     return {0: [x for x in data_ch0], 1: [x for x in data_ch1]}
 
 class SplitDataset:
-    def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = None,normalization_dict=None):
+    def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = None,random_patching=False, 
+                 enable_transforms=False,
+                 normalization_dict=None):
 
         self._patch_size = patch_size
         self._data_location = data_location
@@ -59,11 +61,15 @@ class SplitDataset:
         self._data_dict = load_data(self._data_location)
         self._frameN = len(self._data_dict[0])
         self._target_channel_idx = target_channel_idx
-        self._transform = A.Compose([
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=0.5)],
-            additional_targets={'image2': 'image'})
+        self._random_patching = random_patching
+
+        self._transform = None
+        if enable_transforms:
+            self._transform = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.RandomRotate90(p=0.5)],
+                additional_targets={'image2': 'image'})
 
         if normalization_dict is None:
             print("Computing mean and std for normalization")
@@ -85,6 +91,8 @@ class SplitDataset:
         assert len(self._std_target) == 2, "std_target must have length 2"
         self._mean_target = self._mean_target.reshape(2,1,1)
         self._std_target = self._std_target.reshape(2,1,1)
+        print(f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape} \
+              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None}')
 
     def get_normalization_dict(self):
         assert self._mean_inp is not None, "Mean and std have not been computed"
@@ -103,21 +111,40 @@ class SplitDataset:
         norm_tar = (target - self._mean_target)/self._std_target
         return norm_tar.astype(np.float32)
     
-    def __len__(self):
+    def patch_count_per_frame(self):
         h,w = self._data_dict[0][0].shape
         n_patches_per_frame = (h//self._patch_size) * (w//self._patch_size)
+        return n_patches_per_frame
+    
+    def __len__(self):
+        n_patches_per_frame = self.patch_count_per_frame()
         return self._frameN * n_patches_per_frame
+    
+    def frame_idx(self, index):
+        return index // self.patch_count_per_frame()
+    
+    def patch_loc(self, index):
+        frame_idx = self.frame_idx(index)
+        index = index % self.patch_count_per_frame()
+        h,w = self._data_dict[0][frame_idx].shape
+        h_idx = index // (h//self._patch_size)
+        w_idx = index % (w//self._patch_size)
+        return frame_idx, h_idx*self._patch_size, w_idx*self._patch_size
 
 
     def __getitem__(self, index):
-        frame_idx = np.random.randint(0, self._frameN)
+        if self._random_patching:
+            frame_idx = np.random.randint(0, self._frameN)
+            h,w = self._data_dict[0][frame_idx].shape
+            h_idx = np.random.randint(0, h-self._patch_size)
+            w_idx = np.random.randint(0, w-self._patch_size)
+        else:
+            frame_idx, h_idx, w_idx = self.patch_loc(index)
+        
         img1 = self._data_dict[0][frame_idx]
         img2 = self._data_dict[1][frame_idx]
         assert img1.shape == img2.shape, "Images must have the same shape"
         # random h,w location
-        h,w = img1.shape
-        h_idx = np.random.randint(0, h-self._patch_size)
-        w_idx = np.random.randint(0, w-self._patch_size)
         patch1 = img1[h_idx:h_idx+self._patch_size, w_idx:w_idx+self._patch_size]
         patch2 = img2[h_idx:h_idx+self._patch_size, w_idx:w_idx+self._patch_size]
         if self._transform:
@@ -143,7 +170,9 @@ if __name__ == "__main__":
     patch_size = 512
     dataset = SplitDataset(data_location, patch_size, normalization_dict=None)
     print(len(dataset))
-    inp, target = dataset[0]
+    data = dataset[0]
+    inp = data['input']
+    target = data['target']
     print(inp.shape, target.shape)
     print(inp.mean(), inp.std())
     print(target.mean(), target.std())

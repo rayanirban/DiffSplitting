@@ -36,6 +36,8 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(-1, 1)):
 
 def save_img(img, img_path, mode='RGB'):
     if len(img.shape) ==3 and img.shape[2] > 1:
+        # with the command below, the second dimension is channel and width is the third dimension
+        img = np.moveaxis(img, 1,2)
         img = img.reshape(img.shape[0], -1, 1)
     cv2.imwrite(img_path, img)
     # cv2.imwrite(img_path, img)
