@@ -163,11 +163,11 @@ if __name__ == "__main__":
                         avg_psnr += Metrics.calculate_psnr(
                             pred_img, target_img)
 
-                        if wandb_logger:
-                            wandb_logger.log_image(
-                                f'validation_{idx}', 
-                                np.concatenate((fake_img, input_img, target_img), axis=1)
-                            )
+                        # if wandb_logger:
+                        #     wandb_logger.log_image(
+                        #         f'validation_{idx}', 
+                        #         np.concatenate((pred_img, target_img), axis=1)
+                        #     )
 
                     avg_psnr = avg_psnr / idx
                     diffusion.set_new_noise_schedule(
