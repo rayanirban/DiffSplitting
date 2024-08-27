@@ -21,18 +21,21 @@ def load_data(dataloc:DataLocation):
     elif len(dataloc.channelwise_fpath) > 0:
         return _load_data_channelwise_fpath(dataloc.channelwise_fpath)
 
-def compute_normalization_dict(data_dict):
-    tar1_mean = np.mean([np.mean(x) for x in data_dict[0]])
-    tar2_mean = np.mean([np.mean(x) for x in data_dict[1]])
-    tar1_std = np.mean([np.std(x) for x in data_dict[0]])
-    tar2_std = np.mean([np.std(x) for x in data_dict[1]])
-    inp_mean = (tar1_mean + tar2_mean)
-    inp_std = (tar1_std**2 + tar2_std**2)**0.5
+def compute_normalization_dict(data_dict, q_val=0.995):
+    """
+    x/x_max [0,1]
+    2 x/x_max -1 [-1,1]
+    (2x - x_max)/x_max [-1,1]
+    (x - x_max/2)/(x_max/2) [-1,1]
+    """
+    tar1_max = np.quantile([np.quantile(x, q_val) for x in data_dict[0]], q_val)
+    tar2_max = np.quantile([np.quantile(x, q_val) for x in data_dict[1]], q_val)
+    inp_max = np.quantile([np.quantile(x+y, q_val) for x,y in zip(data_dict[0],data_dict[1])], q_val)
     return {
-        'mean_input': inp_mean,
-        'std_input': inp_std,
-        'mean_target': np.array([tar1_mean, tar2_mean]),
-        'std_target': np.array([tar1_std, tar2_std])
+        'mean_input': inp_max/2,
+        'std_input': inp_max/2,
+        'mean_target': np.array([tar1_max/2, tar2_max/2]),
+        'std_target': np.array([tar1_max/2, tar2_max/2])
     }
 
 def _load_data_channelwise_fpath(fpaths:Tuple[str]):
@@ -170,6 +173,14 @@ if __name__ == "__main__":
     patch_size = 512
     dataset = SplitDataset(data_location, patch_size, normalization_dict=None)
     print(len(dataset))
+    for i in range(len(dataset)):
+        data = dataset[i]
+        inp = data['input']
+        target = data['target']
+        print(inp.min(), inp.max(),end='\t')
+        print(target[0].min(), target[0].max(), end='\t')
+        print(target[1].min(), target[1].max())
+        # break   
     data = dataset[0]
     inp = data['input']
     target = data['target']
