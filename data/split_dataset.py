@@ -55,6 +55,7 @@ def _load_data_fpath(fpath:str):
 class SplitDataset:
     def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = None,random_patching=False, 
                  enable_transforms=False,
+                 max_qval=0.98,
                  normalization_dict=None):
 
         self._patch_size = patch_size
@@ -76,7 +77,7 @@ class SplitDataset:
 
         if normalization_dict is None:
             print("Computing mean and std for normalization")
-            normalization_dict = compute_normalization_dict(self._data_dict)
+            normalization_dict = compute_normalization_dict(self._data_dict, q_val=max_qval)
 
         assert 'mean_input' in normalization_dict, "mean_input must be provided"
         assert 'std_input' in normalization_dict, "std_input must be provided"
@@ -95,7 +96,7 @@ class SplitDataset:
         self._mean_target = self._mean_target.reshape(2,1,1)
         self._std_target = self._std_target.reshape(2,1,1)
         print(f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape} \
-              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None}')
+              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval}')
 
     def get_normalization_dict(self):
         assert self._mean_inp is not None, "Mean and std have not been computed"

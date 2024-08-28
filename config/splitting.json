@@ -18,6 +18,7 @@
             "name": "Hagen",
             "target_channel_idx": 0, // If set then we do image translation from input to this channel 
             "patch_size": 512,
+            "max_qval": 0.98,
             "datapath": {
                 "ch0": "/group/jug/ashesh/data/ventura_gigascience_small/actin-60x-noise2-highsnr.tif",
                 "ch1": "/group/jug/ashesh/data/ventura_gigascience_small/mito-60x-noise2-highsnr.tif"
