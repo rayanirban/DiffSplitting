@@ -16,7 +16,7 @@
     "datasets": {
         "train": {
             "name": "Hagen",
-            "target_channel_idx": 0, // If set then we do image translation from input to this channel 
+            // "target_channel_idx": 0, // If set then we do image translation from input to this channel 
             "patch_size": 512,
             "max_qval": 0.98,
             "datapath": {
@@ -89,7 +89,7 @@
         "print_freq": 50,
         "optimizer": {
             "type": "adam",
-            "lr": 3e-6
+            "lr": 3e-7
         },
         "ema_scheduler": { // not used now
             "step_start_ema": 5000,
