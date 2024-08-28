@@ -16,6 +16,7 @@
     "datasets": {
         "train": {
             "name": "Hagen",
+            "target_channel_idx": 0, // If set then we do image translation from input to this channel 
             "patch_size": 512,
             "datapath": {
                 "ch0": "/group/jug/ashesh/data/ventura_gigascience_small/actin-60x-noise2-highsnr.tif",
@@ -41,8 +42,8 @@
         "loss_type": "vanilla", // TODO: this is not used now, but will be used in future to test mutliple loss functions
         "finetune_norm": false,
         "unet": {
-            "in_channel": 3, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
-            "out_channel": 2,
+            "in_channel": 2, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
+            "out_channel": 1,
             "inner_channel": 16,
             "norm_groups": 16,
             "channel_multiplier": [
@@ -76,7 +77,7 @@
         },
         "diffusion": {
             "image_size": 512,
-            "channels": 2, //sample channel
+            "channels": 1, //sample channel
             "conditional": true // unconditional generation or unconditional generation(super_resolution)
         }
     },

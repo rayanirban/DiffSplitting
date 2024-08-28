@@ -28,7 +28,10 @@ if __name__ == "__main__":
     opt = Logger.parse(args)
     # Convert to NoneDict, which return None for missing key.
     opt = Logger.dict_to_nonedict(opt)
-
+    #sanity checks
+    model_conf = opt['model'] 
+    model_conf['unet']['out_channel'] == model_conf['diffusion']['channels']
+    model_conf['unet']['in_channel'] == 1 + model_conf['unet']['out_channel'], "Input channel= concat([noise, input]) and noise has same shape as target"
     # logging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
@@ -52,17 +55,19 @@ if __name__ == "__main__":
         wandb_logger = None
 
     patch_size = opt['datasets']['train']['patch_size']
-    
+    target_channel_idx = opt['datasets']['train']['target_channel_idx']
     train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
                                                     opt['datasets']['train']['datapath']['ch1']))
     
-    train_set = SplitDataset(train_data_location, patch_size, normalization_dict=None, enable_transforms=True,random_patching=True)
+    train_set = SplitDataset(train_data_location, patch_size, target_channel_idx=target_channel_idx, 
+                             normalization_dict=None, enable_transforms=True,random_patching=True)
     train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
     patch_size = opt['datasets']['val']['patch_size']
     val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
                                                     opt['datasets']['val']['datapath']['ch1']))
-    val_set = SplitDataset(val_data_location, patch_size, normalization_dict=train_set.get_normalization_dict(),
+    val_set = SplitDataset(val_data_location, patch_size, target_channel_idx=target_channel_idx,
+                           normalization_dict=train_set.get_normalization_dict(),
                            enable_transforms=False,
                                                      random_patching=False)
     val_loader = Data.create_dataloader(val_set, opt['datasets']['val'], 'val')
