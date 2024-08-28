@@ -174,7 +174,7 @@ class GaussianDiffusion(nn.Module):
         return model_mean + noise * (0.5 * model_log_variance).exp()
 
     @torch.no_grad()
-    def p_sample_loop(self, x_in, continous=False):
+    def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
         device = self.betas.device
         sample_inter = (1 | (self.num_timesteps//10))
         if not self.conditional:
@@ -182,7 +182,7 @@ class GaussianDiffusion(nn.Module):
             img = torch.randn(shape, device=device)
             ret_img = img
             for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-                img = self.p_sample(img, i)
+                img = self.p_sample(img, i, clip_denoised=clip_denoised)
                 if i % sample_inter == 0:
                     ret_img = torch.cat([ret_img, img], dim=0)
         else:
@@ -193,7 +193,7 @@ class GaussianDiffusion(nn.Module):
             img = torch.randn(shape, device=device)
             ret_img = x.repeat((1, self.channels, 1, 1))  # just to allow for easy concatenation
             for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
-                img = self.p_sample(img, i, condition_x=x)
+                img = self.p_sample(img, i, condition_x=x, clip_denoised=clip_denoised)
                 if i % sample_inter == 0:
                     ret_img = torch.cat([ret_img, img], dim=0)
         if continous:
@@ -205,11 +205,11 @@ class GaussianDiffusion(nn.Module):
     def sample(self, batch_size=1, continous=False):
         image_size = self.image_size
         channels = self.channels
-        return self.p_sample_loop((batch_size, channels, image_size, image_size), continous)
+        return self.p_sample_loop((batch_size, channels, image_size, image_size), continous=continous)
 
     @torch.no_grad()
-    def super_resolution(self, x_in, continous=False):
-        return self.p_sample_loop(x_in, continous)
+    def super_resolution(self, x_in, clip_denoised=True, continous=False):
+        return self.p_sample_loop(x_in,clip_denoised=clip_denoised,continous=continous)
 
     def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))

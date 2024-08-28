@@ -136,6 +136,7 @@ if __name__ == "__main__":
                         input = visuals['input']
                         target = visuals['target']
                         prediction = visuals['prediction']
+                        
                         input_img = Metrics.tensor2img(input, min_max=[input.min(), input.max()])  # uint8
                         target_arr = []
                         pred_arr = []

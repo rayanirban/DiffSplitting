@@ -57,15 +57,15 @@ class DDPM(BaseModel):
         # set log
         self.log_dict['l_pix'] = l_pix.item()
 
-    def test(self, continous=False):
+    def test(self, continous=False, clip_denoised=True):
         self.netG.eval()
         with torch.no_grad():
             if isinstance(self.netG, nn.DataParallel):
                 self.prediction = self.netG.module.super_resolution(
-                    self.data['input'], continous)
+                    self.data['input'], clip_denoised=clip_denoised,continous=continous)
             else:
                 self.prediction = self.netG.super_resolution(
-                    self.data['input'], continous)
+                    self.data['input'],clip_denoised=clip_denoised,continous=continous)
         self.netG.train()
 
     def sample(self, batch_size=1, continous=False):

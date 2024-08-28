@@ -21,7 +21,7 @@ def load_data(dataloc:DataLocation):
     elif len(dataloc.channelwise_fpath) > 0:
         return _load_data_channelwise_fpath(dataloc.channelwise_fpath)
 
-def compute_normalization_dict(data_dict, q_val=0.995):
+def compute_normalization_dict(data_dict, q_val=1.0):
     """
     x/x_max [0,1]
     2 x/x_max -1 [-1,1]
