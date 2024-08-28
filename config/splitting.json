@@ -40,7 +40,7 @@
     },
     "model": {
         "which_model_G": "sr3", // use the ddpm or sr3 network structure
-        "loss_type": "vanilla", // TODO: this is not used now, but will be used in future to test mutliple loss functions
+        "loss_type": "l2", // TODO: this is not used now, but will be used in future to test mutliple loss functions
         "finetune_norm": false,
         "unet": {
             "in_channel": 2, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
@@ -89,7 +89,7 @@
         "print_freq": 50,
         "optimizer": {
             "type": "adam",
-            "lr": 3e-7
+            "lr": 1e-7
         },
         "ema_scheduler": { // not used now
             "step_start_ema": 5000,
