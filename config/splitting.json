@@ -56,7 +56,7 @@
                 // 16
             ],
             "attn_res": [
-                // 16
+                16
             ],
             "res_blocks": 1,
             "dropout": 0
