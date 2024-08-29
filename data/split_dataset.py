@@ -35,7 +35,11 @@ def compute_normalization_dict(data_dict, q_val=1.0):
         'mean_input': inp_max/2,
         'std_input': inp_max/2,
         'mean_target': np.array([tar1_max/2, tar2_max/2]),
-        'std_target': np.array([tar1_max/2, tar2_max/2])
+        'std_target': np.array([tar1_max/2, tar2_max/2]),
+        # 
+        'target0_max': tar1_max,
+        'target1_max': tar2_max,
+        'input_max': inp_max
     }
 
 def _load_data_channelwise_fpath(fpaths:Tuple[str]):
@@ -56,7 +60,8 @@ class SplitDataset:
     def __init__(self, data_location:DataLocation, patch_size, target_channel_idx = None,random_patching=False, 
                  enable_transforms=False,
                  max_qval=0.98,
-                 normalization_dict=None):
+                 normalization_dict=None,
+                 upper_clip=False):
 
         self._patch_size = patch_size
         self._data_location = data_location
@@ -79,6 +84,11 @@ class SplitDataset:
             print("Computing mean and std for normalization")
             normalization_dict = compute_normalization_dict(self._data_dict, q_val=max_qval)
 
+        if upper_clip:
+            print("Clipping data to {} quantile".format(max_qval))
+            self._data_dict[0] = [np.clip(x, 0, normalization_dict['target0_max']) for x in self._data_dict[0]]
+            self._data_dict[1] = [np.clip(x, 0, normalization_dict['target1_max']) for x in self._data_dict[1]]
+
         assert 'mean_input' in normalization_dict, "mean_input must be provided"
         assert 'std_input' in normalization_dict, "std_input must be provided"
         assert 'mean_target' in normalization_dict, "mean_target must be provided"
@@ -88,6 +98,9 @@ class SplitDataset:
         self._std_inp = normalization_dict['std_input']
         self._mean_target = normalization_dict['mean_target']
         self._std_target = normalization_dict['std_target']
+        self._target0_max = normalization_dict['target0_max']
+        self._target1_max = normalization_dict['target1_max']
+        self._input_max = normalization_dict['input_max']
 
         assert isinstance(self._mean_target, np.ndarray), "mean_target must be a numpy array"
         assert isinstance(self._std_target, np.ndarray), "std_target must be a numpy array"
@@ -96,7 +109,8 @@ class SplitDataset:
         self._mean_target = self._mean_target.reshape(2,1,1)
         self._std_target = self._std_target.reshape(2,1,1)
         print(f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape} \
-              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval}')
+              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval} \
+                UpperClip:{int(upper_clip)}')
 
     def get_normalization_dict(self):
         assert self._mean_inp is not None, "Mean and std have not been computed"
@@ -105,7 +119,10 @@ class SplitDataset:
             'mean_input': self._mean_inp,
             'std_input': self._std_inp,
             'mean_target': self._mean_target,
-            'std_target': self._std_target
+            'std_target': self._std_target,
+            'target0_max': self._target0_max,
+            'target1_max': self._target1_max,
+            'input_max': self._input_max,
         }
     def normalize_inp(self, inp):
         norm_inp = (inp - self._mean_inp)/self._std_inp
@@ -172,7 +189,10 @@ if __name__ == "__main__":
     data_location = DataLocation(channelwise_fpath=('/group/jug/ashesh/data/ventura_gigascience_small/actin-60x-noise2-highsnr.tif',
                                                     '/group/jug/ashesh/data/ventura_gigascience_small/mito-60x-noise2-highsnr.tif'))
     patch_size = 512
-    dataset = SplitDataset(data_location, patch_size, normalization_dict=None)
+    # dataset = SplitDataset(data_location, patch_size, normalization_dict=None,max_qval=0.98, upper_clip=True)
+    dataset = SplitDataset(data_location, patch_size, 
+                                max_qval=0.98, upper_clip=True,
+                             normalization_dict=None, enable_transforms=True,random_patching=True)
     print(len(dataset))
     for i in range(len(dataset)):
         data = dataset[i]
@@ -188,3 +208,10 @@ if __name__ == "__main__":
     print(inp.shape, target.shape)
     print(inp.mean(), inp.std())
     print(target.mean(), target.std())
+
+    import matplotlib.pyplot as plt
+    _,ax = plt.subplots(figsize=(9,3),ncols=3)
+
+    ax[0].imshow(inp[0])
+    ax[1].imshow(target[0])
+    ax[2].imshow(target[1])

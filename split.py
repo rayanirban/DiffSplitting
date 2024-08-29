@@ -7,6 +7,8 @@ import core.logger as Logger
 import core.metrics as Metrics
 from core.wandb_logger import WandbLogger
 from data.split_dataset import SplitDataset, DataLocation
+from core.psnr import PSNR
+from collections import defaultdict
 # from tensorboardX import SummaryWriter
 import os
 import numpy as np
@@ -54,20 +56,24 @@ if __name__ == "__main__":
     else:
         wandb_logger = None
 
-    patch_size = opt['datasets']['train']['patch_size']
-    target_channel_idx = opt['datasets']['train']['target_channel_idx']
+    patch_size = opt['datasets']['patch_size']
+    target_channel_idx = opt['datasets']['target_channel_idx']
+    upper_clip = opt['datasets']['upper_clip']
+    max_qval = opt['datasets']['max_qval']
     train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
                                                     opt['datasets']['train']['datapath']['ch1']))
     
     train_set = SplitDataset(train_data_location, patch_size, target_channel_idx=target_channel_idx, 
+                                max_qval=max_qval, upper_clip=upper_clip,
                              normalization_dict=None, enable_transforms=True,random_patching=True)
     train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
-    patch_size = opt['datasets']['val']['patch_size']
     val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
                                                     opt['datasets']['val']['datapath']['ch1']))
     val_set = SplitDataset(val_data_location, patch_size, target_channel_idx=target_channel_idx,
                            normalization_dict=train_set.get_normalization_dict(),
+                           max_qval=max_qval,
+                            upper_clip=upper_clip,
                            enable_transforms=False,
                                                      random_patching=False)
     val_loader = Data.create_dataloader(val_set, opt['datasets']['val'], 'val')
@@ -120,6 +126,7 @@ if __name__ == "__main__":
                     if wandb_logger:
                         wandb_logger.log_metrics(logs)
 
+                psnr_values= defaultdict(list)
                 # validation
                 if current_step % opt['train']['val_freq'] == 0:
                     avg_psnr = 0.0
@@ -138,27 +145,25 @@ if __name__ == "__main__":
                         diffusion.test(continous=False)
                         visuals = diffusion.get_current_visuals()
                         # input, target, prediction = unnormalize_data(visuals,train_set.get_normalization_dict())
-                        input = visuals['input']
-                        target = visuals['target']
-                        prediction = visuals['prediction']
+                        input = visuals['input'].cpu().numpy()
+                        target = visuals['target'].cpu().numpy()
+                        prediction = visuals['prediction'].cpu().numpy()
                         
-                        input_img = Metrics.tensor2img(input, min_max=[input.min(), input.max()])  # uint8
+                        # input_img = Metrics.tensor2img(input, min_max=[input.min(), input.max()])  # uint8
                         target_arr = []
                         pred_arr = []
-                        for ch_idx in range(target.shape[1]):
-                            tar_min_max = [target[:,ch_idx].min(), 
-                                           target[:,ch_idx].max()]
-                            assert target.shape[0] ==1
-                            target_img = Metrics.tensor2img(target[0,ch_idx], min_max=tar_min_max)  # uint8
-                            pred_img = Metrics.tensor2img(prediction[ch_idx], min_max=tar_min_max)  # uint8
-                            target_arr.append(target_img[...,None])
-                            pred_arr.append(pred_img[...,None])
+                        mean_target = val_set.get_normalization_dict()['mean_target']
+                        std_target = val_set.get_normalization_dict()['std_target']
+                        mean_input = val_set.get_normalization_dict()['mean_input']
+                        std_input = val_set.get_normalization_dict()['std_input']
+                        assert input.shape[0] == 1
+                        assert target.shape[0] == 1
+                        input = input[0]
+                        target = target[0]
+                        input_img = (input * std_input + mean_input).astype(np.uint16)
+                        target_img = (target * std_target + mean_target).astype(np.uint16)
+                        pred_img = (prediction * std_target + mean_target).astype(np.uint16)
                         
-                        target_img = np.concatenate(target_arr, axis=2)
-                        pred_img = np.concatenate(pred_arr, axis=2)
-                        # lr_img = Metrics.tensor2img(visuals['LR'])  # uint8
-                        # fake_img = Metrics.tensor2img(visuals['INF'])  # uint8
-
                         # generation
                         Metrics.save_img(
                             target_img, '{}/{}_{}_target.png'.format(result_path, current_step, idx))
@@ -166,8 +171,8 @@ if __name__ == "__main__":
                             input_img, '{}/{}_{}_input.png'.format(result_path, current_step, idx))
                         Metrics.save_img(pred_img, '{}/{}_{}_pred.png'.format(result_path, current_step, idx))
                         
-                        avg_psnr += Metrics.calculate_psnr(
-                            pred_img, target_img)
+                        for ch_idx in range(target.shape[0]):
+                            psnr_values[ch_idx].append(PSNR(target_img[ch_idx][None]*1.0, pred_img[ch_idx][None]*1.0))
 
                         # if wandb_logger:
                         #     wandb_logger.log_image(
