@@ -12,6 +12,38 @@ from collections import defaultdict
 # from tensorboardX import SummaryWriter
 import os
 import numpy as np
+def get_datasets(opt):
+    patch_size = opt['datasets']['patch_size']
+    target_channel_idx = opt['datasets'].get('target_channel_idx', None)
+    upper_clip = opt['datasets'].get('upper_clip', None)
+    max_qval = opt['datasets']['max_qval']
+    
+    data_type = opt['datasets']['train']['name']  
+    uncorrelated_channels = opt['datasets']['train']['uncorrelated_channels']
+    assert data_type in ['cifar10', 'Hagen']
+    if data_type == 'Hagen':
+        train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
+                                                        opt['datasets']['train']['datapath']['ch1']))
+        val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
+                                                        opt['datasets']['val']['datapath']['ch1']))
+    elif data_type == 'cifar10':
+        train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
+        val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
+    
+    train_set = SplitDataset(data_type, train_data_location, patch_size, 
+                             target_channel_idx=target_channel_idx, 
+                                max_qval=max_qval, upper_clip=upper_clip,
+                                uncorrelated_channels=uncorrelated_channels,
+                             normalization_dict=None, enable_transforms=True,random_patching=True)
+
+    val_set = SplitDataset(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
+                           normalization_dict=train_set.get_normalization_dict(),
+                           max_qval=max_qval,
+                            upper_clip=upper_clip,
+                           enable_transforms=False,
+                                                     random_patching=False)
+    return train_set, val_set
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -32,8 +64,9 @@ if __name__ == "__main__":
     opt = Logger.dict_to_nonedict(opt)
     #sanity checks
     model_conf = opt['model'] 
-    model_conf['unet']['out_channel'] == model_conf['diffusion']['channels']
-    model_conf['unet']['in_channel'] == 1 + model_conf['unet']['out_channel'], "Input channel= concat([noise, input]) and noise has same shape as target"
+    assert model_conf['unet']['out_channel'] == model_conf['diffusion']['channels']
+    # assert model_conf['unet']['in_channel'] == 1 + model_conf['unet']['out_channel'], "Input channel= concat([noise, input]) and noise has same shape as target"
+
     # logging
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.benchmark = True
@@ -56,47 +89,11 @@ if __name__ == "__main__":
     else:
         wandb_logger = None
 
-    patch_size = opt['datasets']['patch_size']
-    target_channel_idx = opt['datasets']['target_channel_idx']
-    upper_clip = opt['datasets']['upper_clip']
-    max_qval = opt['datasets']['max_qval']
-    
-    data_type = opt['datasets']['train']['name']  
-    uncorrelated_channels = opt['datasets']['train']['uncorrelated_channels']
-    assert data_type in ['cifar10', 'Hagen']
-    if data_type == 'Hagen':
-        train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
-                                                        opt['datasets']['train']['datapath']['ch1']))
-        val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
-                                                        opt['datasets']['val']['datapath']['ch1']))
-    elif data_type == 'cifar10':
-        train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
-        val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
-    
-    train_set = SplitDataset(data_type, train_data_location, patch_size, 
-                             target_channel_idx=target_channel_idx, 
-                                max_qval=max_qval, upper_clip=upper_clip,
-                                uncorrelated_channels=uncorrelated_channels,
-                             normalization_dict=None, enable_transforms=True,random_patching=True)
-    train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
-    val_set = SplitDataset(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
-                           normalization_dict=train_set.get_normalization_dict(),
-                           max_qval=max_qval,
-                            upper_clip=upper_clip,
-                           enable_transforms=False,
-                                                     random_patching=False)
+    train_set, val_set = get_datasets(opt)
+    train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
     val_loader = Data.create_dataloader(val_set, opt['datasets']['val'], 'val')
-    # dataset
-    # for phase, dataset_opt in opt['datasets'].items():
-    #     if phase == 'train' and args.phase != 'val':
-    #         train_set = Data.create_dataset(dataset_opt, phase)
-    #         train_loader = Data.create_dataloader(
-    #             train_set, dataset_opt, phase)
-    #     elif phase == 'val':
-    #         val_set = Data.create_dataset(dataset_opt, phase)
-    #         val_loader = Data.create_dataloader(
-    #             val_set, dataset_opt, phase)
+
     logger.info('Initial Dataset Finished')
 
     # model

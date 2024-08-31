@@ -96,7 +96,7 @@ class SplitDataset:
 
         # channel_idx is the key. value is list of full sized frames.
         self._data_dict = load_data(data_type, self._data_location)
-        self._frameN = len(self._data_dict[0])
+        self._frameN = min(len(self._data_dict[0]), len(self._data_dict[1]))
         self._target_channel_idx = target_channel_idx
         self._random_patching = random_patching
         self._uncorrelated_channels = uncorrelated_channels
@@ -142,7 +142,9 @@ class SplitDataset:
 
         msg = f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape}'
         msg += f' Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval}'
-        msg += f' UpperClip:{int(upper_clip)} Uncor:{uncorrelated_channels}'
+        if upper_clip is not None:
+            msg += f' UpperClip:{int(upper_clip)}'
+        msg += f'Uncor:{uncorrelated_channels}'
         print(msg)
 
     def get_normalization_dict(self):
