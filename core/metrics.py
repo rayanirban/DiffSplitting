@@ -35,12 +35,28 @@ def tensor2img(tensor, out_type=np.uint8, min_max=(-1, 1)):
 
 
 def save_img(img, img_path, mode='RGB'):
-    if len(img.shape) ==3 and img.shape[2] > 1:
+    # cifar : 6 x32 x32
+    # hagen: 2 x 512 x 512
+    if len(img.shape) ==3 and img.shape[0] not in [1,3]:
         # with the command below, the second dimension is channel and width is the third dimension
-        img = np.moveaxis(img, 1,2)
-        img = img.reshape(img.shape[0], -1, 1)
-    cv2.imwrite(img_path, img)
-    # cv2.imwrite(img_path, img)
+        if mode=='RGB':
+            img = np.transpose(img, (1,2,0))
+            img = img.reshape((img.shape[0], img.shape[1], 2, 3))
+            # HWC[RGB] -> # HCW[RGB]
+            img = img.transpose((0,2,1,3))
+            img = img.reshape((img.shape[0], img.shape[1]*img.shape[2], img.shape[3]))
+        else:
+            img = img.transpose((1,0,2))
+            img = img.reshape((img.shape[0], -1, 1))
+
+    else:
+        assert len(img.shape) == 3, f'img shape is {img.shape}'
+        img = img.transpose((1, 2, 0))
+
+    if mode=='RGB':
+        cv2.imwrite(img_path, img.astype(np.uint8))
+    else:    
+        cv2.imwrite(img_path, img)
 
 
 def calculate_psnr(img1, img2):

@@ -62,9 +62,15 @@ if __name__ == "__main__":
     max_qval = opt['datasets']['max_qval']
     
     data_type = opt['datasets']['train']['name']    
-    # train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
-                                                    # opt['datasets']['train']['datapath']['ch1']))
-    train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
+    assert data_type in ['cifar10', 'Hagen']
+    if data_type == 'Hagen':
+        train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
+                                                        opt['datasets']['train']['datapath']['ch1']))
+        val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
+                                                        opt['datasets']['val']['datapath']['ch1']))
+    elif data_type == 'cifar10':
+        train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
+        val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
     
     train_set = SplitDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
@@ -72,9 +78,6 @@ if __name__ == "__main__":
                              normalization_dict=None, enable_transforms=True,random_patching=True)
     train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
-    # val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
-    #                                                 opt['datasets']['val']['datapath']['ch1']))
-    val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
     val_set = SplitDataset(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
                            normalization_dict=train_set.get_normalization_dict(),
                            max_qval=max_qval,
@@ -169,6 +172,7 @@ if __name__ == "__main__":
                         target_img = (target * std_target + mean_target).astype(np.uint16)
                         pred_img = (prediction * std_target + mean_target).astype(np.uint16)
                         
+                        mode = 'RGB' if input.shape[0] == 3 else 'L'
                         # generation
                         Metrics.save_img(
                             target_img, '{}/{}_{}_target.png'.format(result_path, current_step, idx))
