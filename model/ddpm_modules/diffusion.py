@@ -198,7 +198,7 @@ class GaussianDiffusion(nn.Module):
         return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()
-    def p_sample_loop(self, x_in, continous=False):
+    def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
         device = self.betas.device
         sample_inter = (1 | (self.num_timesteps//10))
 
@@ -209,19 +209,21 @@ class GaussianDiffusion(nn.Module):
             ret_img = img
             for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
                 img = self.p_sample(img, torch.full(
-                    (b,), i, device=device, dtype=torch.long))
+                    (b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
                 if i % sample_inter == 0:
                     ret_img = torch.cat([ret_img, img], dim=0)
             return img
         else:
             x = x_in
-            shape = x.shape
+            shape = list(x.shape)
             b = shape[0]
+            shape[1] = self.channels
+            shape = tuple(shape)
             img = torch.randn(shape, device=device)
-            ret_img = x
+            ret_img = x.repeat((1, self.channels//x.shape[1], 1, 1))  # just to allow for easy concatenation
             for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
                 img = self.p_sample(img, torch.full(
-                    (b,), i, device=device, dtype=torch.long), condition_x=x)
+                    (b,), i, device=device, dtype=torch.long),clip_denoised=clip_denoised, condition_x=x)
                 if i % sample_inter == 0:
                     ret_img = torch.cat([ret_img, img], dim=0)
         if continous:
@@ -236,8 +238,8 @@ class GaussianDiffusion(nn.Module):
         return self.p_sample_loop((batch_size, channels, image_size, image_size), continous)
 
     @torch.no_grad()
-    def super_resolution(self, x_in, continous=False):
-        return self.p_sample_loop(x_in, continous)
+    def super_resolution(self, x_in,clip_denoised=True, continous=False):
+        return self.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous)
 
     @torch.no_grad()
     def interpolate(self, x1, x2, t=None, lam=0.5):
@@ -276,19 +278,18 @@ class GaussianDiffusion(nn.Module):
         # )
 
     def p_losses(self, x_in, noise=None):
-        x_start = x_in['HR']
+        x_start = x_in['target']
         [b, c, h, w] = x_start.shape
         t = torch.randint(0, self.num_timesteps, (b,),
                           device=x_start.device).long()
 
         noise = default(noise, lambda: torch.randn_like(x_start))
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-
         if not self.conditional:
             x_recon = self.denoise_fn(x_noisy, t)
         else:
             x_recon = self.denoise_fn(
-                torch.cat([x_in['SR'], x_noisy], dim=1), t)
+                torch.cat([x_in['input'], x_noisy], dim=1), t)
         loss = self.loss_func(noise, x_recon)
 
         return loss
