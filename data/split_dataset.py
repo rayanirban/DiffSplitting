@@ -4,8 +4,7 @@ import os
 from skimage.io import imread
 from dataclasses import dataclass
 from typing import Tuple, Dict, List
-# import sys
-# sys.path.append('..')
+# import sys; sys.path.append('..')
 from data.cifar10 import load_train_val_data
 
 @dataclass
@@ -87,10 +86,11 @@ class SplitDataset:
                  enable_transforms=False,
                  max_qval=0.98,
                  normalization_dict=None,
+                 uncorrelated_channels=False,
                  upper_clip=False):
 
         assert data_type in ['cifar10','Hagen'], "data_type must be one of ['cifar10','Hagen']"
-        
+
         self._patch_size = patch_size
         self._data_location = data_location
 
@@ -99,6 +99,7 @@ class SplitDataset:
         self._frameN = len(self._data_dict[0])
         self._target_channel_idx = target_channel_idx
         self._random_patching = random_patching
+        self._uncorrelated_channels = uncorrelated_channels
 
         self._transform = None
         if enable_transforms:
@@ -138,9 +139,11 @@ class SplitDataset:
         # assert len(self._std_target) == 2, "std_target must have length 2"
         self._mean_target = self._mean_target.reshape(-1,1,1)
         self._std_target = self._std_target.reshape(-1,1,1)
-        print(f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape} \
-              Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval} \
-                UpperClip:{int(upper_clip)}')
+
+        msg = f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape}'
+        msg += f' Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval}'
+        msg += f' UpperClip:{int(upper_clip)} Uncor:{uncorrelated_channels}'
+        print(msg)
 
     def get_normalization_dict(self):
         assert self._mean_inp is not None, "Mean and std have not been computed"
@@ -193,7 +196,11 @@ class SplitDataset:
             frame_idx, h_idx, w_idx = self.patch_loc(index)
         
         img1 = self._data_dict[0][frame_idx]
+
+        if self._uncorrelated_channels:
+            frame_idx = np.random.randint(0, self._frameN)
         img2 = self._data_dict[1][frame_idx]
+        
         assert img1.shape == img2.shape, "Images must have the same shape"
         # random h,w location
         patch1 = img1[...,h_idx:h_idx+self._patch_size, w_idx:w_idx+self._patch_size].astype(np.float32)
@@ -233,9 +240,11 @@ if __name__ == "__main__":
     data_location = DataLocation(directory='/group/jug/ashesh/data/cifar-10-python/train')
     patch_size = 32
     data_type = 'cifar10'
+    uncorrelated_channels = True
     dataset = SplitDataset(data_type, data_location, patch_size, 
                                 max_qval=0.98, upper_clip=True,
-                             normalization_dict=None, enable_transforms=True,random_patching=True)
+                             normalization_dict=None, enable_transforms=True,
+                             uncorrelated_channels=True, random_patching=True)
     print(len(dataset))
     for i in range(len(dataset)):
         data = dataset[i]

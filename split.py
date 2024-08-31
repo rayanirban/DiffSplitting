@@ -61,7 +61,8 @@ if __name__ == "__main__":
     upper_clip = opt['datasets']['upper_clip']
     max_qval = opt['datasets']['max_qval']
     
-    data_type = opt['datasets']['train']['name']    
+    data_type = opt['datasets']['train']['name']  
+    uncorrelated_channels = opt['datasets']['train']['uncorrelated_channels']
     assert data_type in ['cifar10', 'Hagen']
     if data_type == 'Hagen':
         train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     train_set = SplitDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
+                                uncorrelated_channels=uncorrelated_channels,
                              normalization_dict=None, enable_transforms=True,random_patching=True)
     train_loader = Data.create_dataloader(train_set, opt['datasets']['train'], 'train')
 
