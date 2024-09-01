@@ -152,6 +152,7 @@ class GaussianDiffusion(nn.Module):
         batch_size = x.shape[0]
         noise_level = torch.FloatTensor(
             [self.sqrt_alphas_cumprod_prev[t+1]]).repeat(batch_size, 1).to(x.device)
+
         if condition_x is not None:
             x_recon = self.predict_start_from_noise(
                 x, t=t, noise=self.denoise_fn(torch.cat([condition_x, x], dim=1), noise_level))
