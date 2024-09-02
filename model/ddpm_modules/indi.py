@@ -55,18 +55,21 @@ class InDI(GaussianDiffusion):
 
     @torch.no_grad()
     def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
-        device = self.x_in.device
+        device = x_in.device
         sample_inter = (1 | (self.num_timesteps//10))
         assert self.conditional is False
-        shape = x_in
-        b = shape[0]
-        img = torch.randn(shape, device=device)
+        b = x_in.shape[0]
+        
+        x_in = torch.cat([x_in, x_in], dim=1)
+        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(1.0)
         ret_img = img
         for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
             if i % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)
-        return img
+        
+        assert img.shape[0] == 1
+        return img[0]
 
     def get_e(self, t):
         # TODO: for brownian motion, this will change.
