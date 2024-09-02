@@ -49,8 +49,9 @@ class InDI(GaussianDiffusion):
             return x
         assert t > 0, "t must be non-negative."
 
-        x0 = self.denoise_fn(x, t)
-        return (step_size/t) * x0 + (1 - step_size/t) * x
+        t_float = t/self.num_timesteps
+        x0 = self.denoise_fn(x, t_float)
+        return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
 
     @torch.no_grad()
     def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
@@ -94,6 +95,7 @@ class InDI(GaussianDiffusion):
     def q_sample(self, x_start, x_end, t, noise=None):
         if len(t.shape) ==1:
             t = t.reshape(-1, 1, 1, 1)
+
         noise = default(noise, lambda: torch.randn_like(x_start))
         return (1-t)*x_start + t*x_end + noise * self.get_t_times_e(t)
 
@@ -108,10 +110,11 @@ class InDI(GaussianDiffusion):
         t = torch.randint(0, self.num_timesteps, (b,),
                           device=x_start.device).long()
 
+        t_float = t/self.num_timesteps
         noise = default(noise, lambda: torch.randn_like(x_start))
-        x_noisy = self.q_sample(x_start=x_start, x_end=x_end, t=t, noise=noise)
+        x_noisy = self.q_sample(x_start=x_start, x_end=x_end, t=t_float, noise=noise)
         assert self.conditional is False
-        x_recon = self.denoise_fn(x_noisy, t)
+        x_recon = self.denoise_fn(x_noisy, t_float)
         loss = self.loss_func(x_start, x_recon)
         return loss
 
