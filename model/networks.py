@@ -83,12 +83,20 @@ def init_weights(net, init_type='kaiming', scale=1, std=0.02):
 def define_G(opt):
     model_opt = opt['model']
     if model_opt['which_model_G'] == 'ddpm':
-        from .ddpm_modules import diffusion, unet
+        from .ddpm_modules.unet import UNet
+        from .ddpm_modules.diffusion import GaussianDiffusion as netG_class
+
     elif model_opt['which_model_G'] == 'sr3':
-        from .sr3_modules import diffusion, unet
+        from .sr3_modules.diffusion import GaussianDiffusion as netG_class
+        from .sr3_modules.unet import UNet
+    elif model_opt['which_model_G'] == 'indi':
+        from .ddpm_modules.unet import UNet
+        from .ddpm_modules.indi import InDI as netG_class
+
     if ('norm_groups' not in model_opt['unet']) or model_opt['unet']['norm_groups'] is None:
         model_opt['unet']['norm_groups']=32
-    model = unet.UNet(
+    
+    model = UNet(
         in_channel=model_opt['unet']['in_channel'],
         out_channel=model_opt['unet']['out_channel'],
         norm_groups=model_opt['unet']['norm_groups'],
@@ -99,7 +107,7 @@ def define_G(opt):
         dropout=model_opt['unet']['dropout'],
         image_size=model_opt['diffusion']['image_size']
     )
-    netG = diffusion.GaussianDiffusion(
+    netG = netG_class(
         model,
         image_size=model_opt['diffusion']['image_size'],
         channels=model_opt['diffusion']['channels'],
