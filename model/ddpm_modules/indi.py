@@ -43,8 +43,11 @@ class InDI(GaussianDiffusion):
         raise NotImplementedError("This is not needed.")
 
     @torch.no_grad()
-    def p_sample(self, x, t, step_size=1, clip_denoised=True, repeat_noise=False, condition_x=None):
+    def p_sample(self, x, t, step_size=None, clip_denoised=True, repeat_noise=False, condition_x=None):
         # TODO: for brownian motion, this will change.
+        if step_size is None:
+            step_size = 1.0/ self.num_timesteps
+            
         if t == 0:
             return x
         assert t > 0, "t must be non-negative."
