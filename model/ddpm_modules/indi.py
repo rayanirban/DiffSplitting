@@ -54,6 +54,9 @@ class InDI(GaussianDiffusion):
 
         t_float = t/self.num_timesteps
         x0 = self.denoise_fn(x, t_float)
+        if clip_denoised:
+            x0.clamp_(-1., 1.)
+
         return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
 
     @torch.no_grad()
@@ -72,7 +75,10 @@ class InDI(GaussianDiffusion):
                 ret_img = torch.cat([ret_img, img], dim=0)
         
         assert img.shape[0] == 1
-        return img[0]
+        if continous:
+            return ret_img
+        else:
+            return ret_img[-1]
 
     def get_e(self, t):
         # TODO: for brownian motion, this will change.
