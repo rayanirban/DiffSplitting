@@ -178,16 +178,17 @@ if __name__ == "__main__":
                             input_img, '{}/{}_{}_input.png'.format(result_path, current_step, idx))
                         Metrics.save_img(pred_img, '{}/{}_{}_pred.png'.format(result_path, current_step, idx))
                         
-                        for ch_idx in range(target.shape[0]):
-                            psnr_values[ch_idx].append(PSNR(target_img[ch_idx][None]*1.0, pred_img[ch_idx][None]*1.0))
-
+                        ncols = 3 if mode == 'RGB' else 1
+                        for ch_idx in range(0,target.shape[0],ncols):
+                            psnr_val = PSNR(target_img[ch_idx:ch_idx+ncols]*1.0, pred_img[ch_idx:ch_idx+ncols]*1.0).mean().item()
+                            psnr_values[ch_idx].append(psnr_val)
                         # if wandb_logger:
                         #     wandb_logger.log_image(
                         #         f'validation_{idx}', 
                         #         np.concatenate((pred_img, target_img), axis=1)
                         #     )
 
-                    avg_psnr = avg_psnr / idx
+                    avg_psnr = np.mean([np.mean(psnr_values[ch_idx]) for ch_idx in psnr_values.keys()])
                     diffusion.set_new_noise_schedule(
                         opt['model']['beta_schedule']['train'], schedule_phase='train')
                     # log
