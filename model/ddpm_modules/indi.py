@@ -29,7 +29,7 @@ class InDI(GaussianDiffusion):
         self._t_sampling_mode = 'linear_ramp'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp']
 
-        self._noise_mode = 'brownian'
+        self._noise_mode = 'gaussian'
         assert self._noise_mode in ['gaussian', 'brownian']
         msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
         print(msg)
