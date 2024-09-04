@@ -29,6 +29,11 @@ class InDI(GaussianDiffusion):
         self._t_sampling_mode = 'linear_ramp'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp']
 
+        self._noise_mode = 'brownian'
+        assert self._noise_mode in ['gaussian', 'brownian']
+        msg = f'T{self.num_timesteps} Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
+        print(msg)
+
     def set_new_noise_schedule(self, schedule_opt, device):
         # TODO: for brownian motion, this will change.
         self.num_timesteps= schedule_opt['n_timestep']
@@ -61,7 +66,13 @@ class InDI(GaussianDiffusion):
         if clip_denoised:
             x0.clamp_(-1., 1.)
 
-        return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
+        if self._noise_mode == 'gaussian':
+            return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
+        elif self._noise_mode == 'brownian':
+            delta_e = torch.sqrt(self.get_e(t_float-step_size)**2 - self.get_e(t_float)**2)
+            noise_component = torch.randn_like(x0) * (t_float - step_size) * delta_e
+            
+            return (step_size/t_float) * x0 + (1 - step_size/t_float) * x + noise_component
 
     @torch.no_grad()
     def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
@@ -86,13 +97,20 @@ class InDI(GaussianDiffusion):
 
     def get_e(self, t):
         # TODO: for brownian motion, this will change.
-        return self.e
-
+        if self._noise_mode == 'gaussian':
+            return self.e
+        elif self._noise_mode == 'brownian':
+            assert t > 0, "t must be non-negative."
+            return self.e/torch.sqrt(t)
+        
     def get_t_times_e(self, t):
         # TODO: for brownian motion, this will change.
         # TODO: the problem is that for brownian motion, we have /sqrt(t). so, it is not defined for t=0.
         # so, this function may be needed. 
-        return self.e * t
+        if self._noise_mode == 'gaussian':
+            return self.e * t
+        elif self._noise_mode == 'brownian':
+            return self.e * torch.sqrt(t)
     
     @torch.no_grad()
     def sample(self, batch_size=1, continous=False):
@@ -108,13 +126,16 @@ class InDI(GaussianDiffusion):
     def interpolate(self, x1, x2, t=None, lam=0.5):
         raise NotImplementedError("This is not needed.")
     
-    def q_sample(self, x_start, x_end, t, noise=None):
+    def q_sample(self, x_start, x_end, t:float, noise=None):
+        assert 0 < t.min(), "t > 0"
+        assert t.max() <= 1, "t <= 1"
+
         if len(t.shape) ==1:
             t = t.reshape(-1, 1, 1, 1)
 
         noise = default(noise, lambda: torch.randn_like(x_start))
         return (1-t)*x_start + t*x_end + noise * self.get_t_times_e(t)
-
+        
     def sample_t(self, batch_size, device):
 
         if self._t_sampling_mode == 'linear_ramp':
