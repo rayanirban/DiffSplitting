@@ -26,6 +26,8 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
+        self._t_sampling_mode = 'linear_ramp'
+        assert self._t_sampling_mode in ['uniform', 'linear_ramp']
 
     def set_new_noise_schedule(self, schedule_opt, device):
         # TODO: for brownian motion, this will change.
@@ -113,6 +115,18 @@ class InDI(GaussianDiffusion):
         noise = default(noise, lambda: torch.randn_like(x_start))
         return (1-t)*x_start + t*x_end + noise * self.get_t_times_e(t)
 
+    def sample_t(self, batch_size, device):
+
+        if self._t_sampling_mode == 'linear_ramp':
+            # probablity of t=0 is 0, which is what we want.
+            probablity =torch.arange(self.num_timesteps)
+            probablity = probablity/torch.sum(probablity)
+            t = torch.multinomial(probablity,batch_size,replacement=True).to(device).long()
+        else:
+            assert self._t_sampling_mode == 'uniform'
+            t = torch.randint(1, self.num_timesteps+1, (batch_size,),device=device).long()
+        return t
+
     def p_losses(self, x_in, noise=None):
         # pass
         x_start = x_in['target']
@@ -121,9 +135,7 @@ class InDI(GaussianDiffusion):
         x_end = torch.concat([x_end, x_end], dim=1)
 
         b, *_ = x_start.shape
-        t = torch.randint(1, self.num_timesteps+1, (b,),
-                          device=x_start.device).long()
-
+        t = self.sample_t(b, x_start.device)
         t_float = t/self.num_timesteps
         noise = default(noise, lambda: torch.randn_like(x_start))
         x_noisy = self.q_sample(x_start=x_start, x_end=x_end, t=t_float, noise=noise)
