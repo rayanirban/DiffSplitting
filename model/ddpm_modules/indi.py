@@ -71,7 +71,7 @@ class InDI(GaussianDiffusion):
         x_in = torch.cat([x_in, x_in], dim=1)
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(1.0)
         ret_img = img
-        for i in tqdm(reversed(range(0, self.num_timesteps)), desc='sampling loop time step', total=self.num_timesteps):
+        for i in tqdm(reversed(range(1, self.num_timesteps+1)), desc='sampling loop time step', total=self.num_timesteps):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
             if i % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)
