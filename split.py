@@ -167,10 +167,9 @@ if __name__ == "__main__":
                         assert target.shape[0] == 1
                         input = input[0]
                         target = target[0]
-                        input_img = (input * std_input + mean_input).astype(np.uint16)
+                        input_img = ((input * std_input + mean_input)/2).astype(np.uint16)
                         target_img = (target * std_target + mean_target).astype(np.uint16)
                         pred_img = (prediction * std_target + mean_target).astype(np.uint16)
-                        
                         mode = 'RGB' if input.shape[0] == 3 else 'L'
                         # generation
                         Metrics.save_img(
