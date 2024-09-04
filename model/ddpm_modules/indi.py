@@ -17,11 +17,13 @@ class InDI(GaussianDiffusion):
         image_size,
         channels=3,
         loss_type='l1',
+        lr_reduction=None,
         conditional=True,
         schedule_opt=None,
         e = 0.01,
     ):
         super().__init__(denoise_fn, image_size, channels=channels, loss_type=loss_type, conditional=conditional, 
+                         lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
 
@@ -119,7 +121,7 @@ class InDI(GaussianDiffusion):
         x_end = torch.concat([x_end, x_end], dim=1)
 
         b, *_ = x_start.shape
-        t = torch.randint(0, self.num_timesteps, (b,),
+        t = torch.randint(1, self.num_timesteps+1, (b,),
                           device=x_start.device).long()
 
         t_float = t/self.num_timesteps

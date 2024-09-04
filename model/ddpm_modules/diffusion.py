@@ -82,24 +82,29 @@ class GaussianDiffusion(nn.Module):
         image_size,
         channels=3,
         loss_type='l1',
+        lr_reduction=None,
         conditional=True,
         schedule_opt=None
     ):
         super().__init__()
+
         self.channels = channels
         self.image_size = image_size
         self.denoise_fn = denoise_fn
         self.conditional = conditional
         self.loss_type = loss_type
+        self.lr_reduction = lr_reduction
+        if self.lr_reduction is None:
+            self.lr_reduction = 'sum'
         if schedule_opt is not None:
             pass
             # self.set_new_noise_schedule(schedule_opt)
 
     def set_loss(self, device):
         if self.loss_type == 'l1':
-            self.loss_func = nn.L1Loss(reduction='sum').to(device)
+            self.loss_func = nn.L1Loss(reduction=self.lr_reduction).to(device)
         elif self.loss_type == 'l2':
-            self.loss_func = nn.MSELoss(reduction='sum').to(device)
+            self.loss_func = nn.MSELoss(reduction=self.lr_reduction).to(device)
         else:
             raise NotImplementedError()
 

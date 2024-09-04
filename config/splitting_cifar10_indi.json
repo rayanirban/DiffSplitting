@@ -37,6 +37,7 @@
     "model": {
         "which_model_G": "indi", // use the ddpm or sr3 network structure
         "loss_type": "l1", // TODO: this is not used now, but will be used in future to test mutliple loss functions
+        "lr_reduction": "mean",
         "finetune_norm": false,
         "unet": {
             "in_channel": 6, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
@@ -61,13 +62,13 @@
         "beta_schedule": { // use munual beta_schedule for acceleration
             "train": {
                 "schedule": "linear",
-                "n_timestep": 50,
+                "n_timestep": 1,
                 "linear_start": 1e-6,
                 "linear_end": 1e-2
             },
             "val": {
                 "schedule": "linear",
-                "n_timestep": 50,
+                "n_timestep": 1,
                 "linear_start": 1e-6,
                 "linear_end": 1e-2
             }
@@ -80,12 +81,13 @@
     },
     "train": {
         "n_iter": 1000000,
-        "val_freq": 1e4,
-        "save_checkpoint_freq": 1e4,
+        "val_freq": 200,
+        "save_checkpoint_freq": 200,
         "print_freq": 50,
         "optimizer": {
             "type": "adam",
-            "lr": 3e-6
+            "lr": 1e-3
+            
         },
         "ema_scheduler": { // not used now
             "step_start_ema": 5000,
