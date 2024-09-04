@@ -31,7 +31,7 @@ class InDI(GaussianDiffusion):
 
         self._noise_mode = 'brownian'
         assert self._noise_mode in ['gaussian', 'brownian']
-        msg = f'T{self.num_timesteps} Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
+        msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
         print(msg)
 
     def set_new_noise_schedule(self, schedule_opt, device):
@@ -61,7 +61,7 @@ class InDI(GaussianDiffusion):
             return x
         assert t > 0, "t must be non-negative."
 
-        t_float = t/self.num_timesteps
+        t_float = torch.Tensor([t/self.num_timesteps]).to(x.device)
         x0 = self.denoise_fn(x, t_float)
         if clip_denoised:
             x0.clamp_(-1., 1.)
@@ -69,10 +69,13 @@ class InDI(GaussianDiffusion):
         if self._noise_mode == 'gaussian':
             return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
         elif self._noise_mode == 'brownian':
+            data_component = (step_size/t_float) * x0 + (1 - step_size/t_float) * x
+            if t_float == step_size:
+                return data_component
             delta_e = torch.sqrt(self.get_e(t_float-step_size)**2 - self.get_e(t_float)**2)
             noise_component = torch.randn_like(x0) * (t_float - step_size) * delta_e
             
-            return (step_size/t_float) * x0 + (1 - step_size/t_float) * x + noise_component
+            return data_component + noise_component
 
     @torch.no_grad()
     def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
@@ -82,7 +85,7 @@ class InDI(GaussianDiffusion):
         b = x_in.shape[0]
         
         x_in = torch.cat([x_in, x_in], dim=1)
-        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(1.0)
+        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
         for i in tqdm(reversed(range(1, self.num_timesteps+1)), desc='sampling loop time step', total=self.num_timesteps):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
