@@ -26,7 +26,7 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
-        self._t_sampling_mode = 'quadratic_ramp'
+        self._t_sampling_mode = 'uniform'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp']
 
         self._noise_mode = 'brownian'
