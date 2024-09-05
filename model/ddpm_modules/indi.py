@@ -34,7 +34,7 @@ class InDI(GaussianDiffusion):
         if self._noise_mode == 'none':
             self.e = 0.0
         msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
-        print(msg)
+        print(f'[{self.__class__.__name__}]: {msg}')
 
     def set_new_noise_schedule(self, schedule_opt, device):
         # TODO: for brownian motion, this will change.
