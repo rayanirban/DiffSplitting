@@ -26,8 +26,8 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
-        self._t_sampling_mode = 'uniform'
-        assert self._t_sampling_mode in ['uniform', 'linear_ramp']
+        self._t_sampling_mode = 'quadratic_ramp'
+        assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp']
 
         self._noise_mode = 'brownian'
         assert self._noise_mode in ['gaussian', 'brownian']
@@ -144,6 +144,11 @@ class InDI(GaussianDiffusion):
         if self._t_sampling_mode == 'linear_ramp':
             # probablity of t=0 is 0, which is what we want.
             probablity =torch.arange(self.num_timesteps)
+            probablity = probablity/torch.sum(probablity)
+            t = torch.multinomial(probablity,batch_size,replacement=True).to(device).long()
+        elif self._t_sampling_mode == 'quadratic_ramp':
+            # probablity of t=0 is 0, which is what we want.
+            probablity =torch.arange(self.num_timesteps)**2
             probablity = probablity/torch.sum(probablity)
             t = torch.multinomial(probablity,batch_size,replacement=True).to(device).long()
         else:
