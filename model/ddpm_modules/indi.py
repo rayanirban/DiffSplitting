@@ -25,12 +25,14 @@ class InDI(GaussianDiffusion):
         super().__init__(denoise_fn, image_size, channels=channels, loss_type=loss_type, conditional=conditional, 
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
-        self.e = 0#e
+        self.e = e
         self._t_sampling_mode = 'uniform'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp']
 
-        self._noise_mode = 'brownian'
-        assert self._noise_mode in ['gaussian', 'brownian']
+        self._noise_mode = 'none'
+        assert self._noise_mode in ['gaussian', 'brownian', 'none']
+        if self._noise_mode == 'none':
+            self.e = 0.0
         msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
         print(msg)
 
@@ -66,7 +68,7 @@ class InDI(GaussianDiffusion):
         if clip_denoised:
             x0.clamp_(-1., 1.)
 
-        if self._noise_mode == 'gaussian':
+        if self._noise_mode in ['gaussian', 'none']:
             return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
         elif self._noise_mode == 'brownian':
             data_component = (step_size/t_float) * x0 + (1 - step_size/t_float) * x
@@ -100,7 +102,7 @@ class InDI(GaussianDiffusion):
 
     def get_e(self, t):
         # TODO: for brownian motion, this will change.
-        if self._noise_mode == 'gaussian':
+        if self._noise_mode in ['gaussian', 'none']:
             return self.e
         elif self._noise_mode == 'brownian':
             assert t > 0, "t must be non-negative."
@@ -110,7 +112,7 @@ class InDI(GaussianDiffusion):
         # TODO: for brownian motion, this will change.
         # TODO: the problem is that for brownian motion, we have /sqrt(t). so, it is not defined for t=0.
         # so, this function may be needed. 
-        if self._noise_mode == 'gaussian':
+        if self._noise_mode in ['gaussian', 'none']:
             return self.e * t
         elif self._noise_mode == 'brownian':
             return self.e * torch.sqrt(t)
