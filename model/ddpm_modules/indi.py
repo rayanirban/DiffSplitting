@@ -25,7 +25,7 @@ class InDI(GaussianDiffusion):
         super().__init__(denoise_fn, image_size, channels=channels, loss_type=loss_type, conditional=conditional, 
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
-        self.e = e
+        self.e = 0#e
         self._t_sampling_mode = 'uniform'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp']
 
