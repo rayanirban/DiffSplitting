@@ -26,7 +26,7 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
-        self._t_sampling_mode = 'uniform_in_range'
+        self._t_sampling_mode = 'uniform'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp', 'uniform_in_range']
 
         self._noise_mode = 'none'
@@ -178,6 +178,7 @@ class InDI(GaussianDiffusion):
         assert self.conditional is False
         x_recon = self.denoise_fn(x_noisy, t_float)
         loss = self.loss_func(x_start, x_recon)
+
         return loss
 
     def forward(self, x, *args, **kwargs):
