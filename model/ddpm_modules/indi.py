@@ -26,13 +26,16 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
-        self._t_sampling_mode = 'uniform'
-        assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp']
+        self._t_sampling_mode = 'uniform_in_range'
+        assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp', 'uniform_in_range']
 
         self._noise_mode = 'none'
         assert self._noise_mode in ['gaussian', 'brownian', 'none']
         if self._noise_mode == 'none':
             self.e = 0.0
+        if self._t_sampling_mode == 'uniform_in_range':
+            assert self._noise_mode == 'none', "This is not implemented yet."
+        
         msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
         print(f'[{self.__class__.__name__}]: {msg}')
 
@@ -89,7 +92,8 @@ class InDI(GaussianDiffusion):
         x_in = torch.cat([x_in, x_in], dim=1)
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
-        for i in tqdm(reversed(range(1, self.num_timesteps+1)), desc='sampling loop time step', total=self.num_timesteps):
+        t_start = 1 if self._t_sampling_mode != 'uniform_in_range' else self.num_timesteps//3
+        for i in tqdm(reversed(range(t_start, self.num_timesteps+1)), desc='sampling loop time step', total=self.num_timesteps):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
             if i % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)
@@ -153,9 +157,10 @@ class InDI(GaussianDiffusion):
             probablity =torch.arange(self.num_timesteps)**2
             probablity = probablity/torch.sum(probablity)
             t = torch.multinomial(probablity,batch_size,replacement=True).to(device).long()
-        else:
-            assert self._t_sampling_mode == 'uniform'
+        elif self._t_sampling_mode == 'uniform':
             t = torch.randint(1, self.num_timesteps+1, (batch_size,),device=device).long()
+        elif self._t_sampling_mode == 'uniform_in_range':
+            t = torch.randint(self.num_timesteps//3, self.num_timesteps+1, (batch_size,),device=device).long()
         return t
 
     def p_losses(self, x_in, noise=None):
