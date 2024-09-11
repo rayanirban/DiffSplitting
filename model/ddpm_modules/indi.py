@@ -28,7 +28,7 @@ class InDI(GaussianDiffusion):
         self.e = e
         self._t_sampling_mode = 'linear_indi'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp', 'linear_indi']
-        self._linear_indi_a = 2.0
+        self._linear_indi_a = 1.0
 
         self._noise_mode = 'brownian'
         assert self._noise_mode in ['gaussian', 'brownian', 'none']
