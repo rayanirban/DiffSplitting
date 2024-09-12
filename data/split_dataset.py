@@ -235,14 +235,15 @@ class SplitDataset:
     
 
 if __name__ == "__main__":
-    # data_location = DataLocation(channelwise_fpath=('/group/jug/ashesh/data/ventura_gigascience_small/actin-60x-noise2-highsnr.tif',
-    #                                                 '/group/jug/ashesh/data/ventura_gigascience_small/mito-60x-noise2-highsnr.tif'))
+    import sys
+    data_location = DataLocation(channelwise_fpath=('/group/jug/ashesh/data/diffsplit_hagen/val/val_actin-60x-noise2-highsnr.tif',
+                                                    '/group/jug/ashesh/data/diffsplit_hagen/val/val_mito-60x-noise2-highsnr.tif'))
     # patch_size = 512
     # data_type = 'hagen'
-    data_location = DataLocation(directory='/group/jug/ashesh/data/cifar-10-python/train')
-    patch_size = 32
-    data_type = 'cifar10'
-    uncorrelated_channels = True
+    # data_location = DataLocation(directory='/group/jug/ashesh/data/cifar-10-python/train')
+    patch_size = 256
+    data_type = 'Hagen'
+    uncorrelated_channels = False
     dataset = SplitDataset(data_type, data_location, patch_size, 
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=True,

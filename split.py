@@ -169,14 +169,11 @@ if __name__ == "__main__":
                         target = target[0]
                         input_img = ((input * std_input + mean_input)/2).astype(np.uint16)
                         target_img = (target * std_target + mean_target).astype(np.uint16)
-                        pred_img = (prediction * std_target + mean_target).astype(np.uint16)
+                        pred_img = (prediction * std_target + mean_target)
+                        pred_img[pred_img < 0] = 0
+                        pred_img[pred_img > 65535] = 65535
+                        pred_img=pred_img.astype(np.uint16)
                         mode = 'RGB' if input.shape[0] == 3 else 'L'
-                        # generation
-                        Metrics.save_img(
-                            target_img, '{}/{}_{}_target.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(
-                            input_img, '{}/{}_{}_input.png'.format(result_path, current_step, idx))
-                        Metrics.save_img(pred_img, '{}/{}_{}_pred.png'.format(result_path, current_step, idx))
                         
                         ncols = 3 if mode == 'RGB' else 1
                         for ch_idx in range(0,target.shape[0],ncols):
@@ -187,6 +184,31 @@ if __name__ == "__main__":
                         #         f'validation_{idx}', 
                         #         np.concatenate((pred_img, target_img), axis=1)
                         #     )
+                        if mode != 'RGB':
+                            # it is uint16. it is better to normalize it to 0-1
+                            minv = target_img.reshape(target_img.shape[0],-1).min(axis=1).reshape(-1,1,1)
+                            target_img = target_img - minv
+                            maxv = target_img.reshape(target_img.shape[0],-1).max(axis=1).reshape(-1,1,1)
+                            target_img = target_img / maxv
+
+                            input_img = input_img - input_img.min()
+                            max_val_input = input_img.reshape(input_img.shape[0],-1).max(axis=1).reshape(-1,1,1)
+                            input_img = input_img / max_val_input
+
+                            pred_img = pred_img - minv
+                            pred_img = pred_img / maxv
+                            pred_img[pred_img < 0] = 0
+                            pred_img[pred_img > 1] = 1
+
+
+                        # print(target_img.max(), target_img.min(), input_img.max(), input_img.min(), pred_img.max(), pred_img.min())
+                        # generation
+                        Metrics.save_img(
+                            target_img, '{}/{}_{}_target.png'.format(result_path, current_step, idx), mode=mode)
+                        Metrics.save_img(
+                            input_img, '{}/{}_{}_input.png'.format(result_path, current_step, idx), mode=mode)
+                        Metrics.save_img(pred_img, '{}/{}_{}_pred.png'.format(result_path, current_step, idx), mode=mode)
+
 
                     avg_psnr = np.mean([np.mean(psnr_values[ch_idx]) for ch_idx in psnr_values.keys()])
                     diffusion.set_new_noise_schedule(

@@ -55,7 +55,7 @@ def save_img(img, img_path, mode='RGB'):
 
     if mode=='RGB':
         cv2.imwrite(img_path, img.astype(np.uint8))
-    else:    
+    else:  
         cv2.imwrite(img_path, img)
 
 
