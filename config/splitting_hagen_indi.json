@@ -28,7 +28,7 @@
             "batch_size": 4,
             "num_workers": 4,
             "use_shuffle": true,
-            "uncorrelated_channels": false
+            "uncorrelated_channels": true
         },
         "val": {
             "name": "Hagen",
