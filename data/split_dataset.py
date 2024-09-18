@@ -180,6 +180,9 @@ class SplitDataset:
         return index // self.patch_count_per_frame()
     
     def patch_loc(self, index):
+        """
+        Returns the frame index along with co-ordinates of the top-left corner of the patch in the frame.
+        """
         frame_idx = self.frame_idx(index)
         index = index % self.patch_count_per_frame()
         h,w = self._data_dict[0][frame_idx].shape[-2:]
