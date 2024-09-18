@@ -53,9 +53,11 @@ def compute_normalization_dict(data_dict, q_val=1.0, uint8_data=False):
         }
 
     else:
-        tar1_max = np.quantile([np.quantile(x, q_val) for x in data_dict[0]], q_val)
-        tar2_max = np.quantile([np.quantile(x, q_val) for x in data_dict[1]], q_val)
-        inp_max = np.quantile([np.quantile(x+y, q_val) for x,y in zip(data_dict[0],data_dict[1])], q_val)
+        tar1_unravel = np.concatenate([x.reshape(-1,) for x in data_dict[0]])
+        tar2_unravel = np.concatenate([x.reshape(-1,) for x in data_dict[1]])
+        tar1_max = np.quantile(tar1_unravel, q_val)
+        tar2_max = np.quantile(tar2_unravel, q_val)
+        inp_max = np.quantile(tar1_unravel+tar2_unravel, q_val)
         return {
             'mean_input': inp_max/2,
             'std_input': inp_max/2,
@@ -71,6 +73,9 @@ def _load_data_channelwise_fpath(fpaths:Tuple[str])-> Dict[int, List[np.ndarray]
     assert len(fpaths) == 2, "Only two channelwise fpaths are supported"
     data_ch0 = imread(fpaths[0], plugin='tifffile')
     data_ch1 = imread(fpaths[1], plugin='tifffile')
+    print('HARDCODED upperclip to 1993. Disable it if not needed !!!')
+    data_ch0[data_ch0 > 1993.0] = 1993.0
+    data_ch1[data_ch1 > 1993.0] = 1993.0
     return {0: [x for x in data_ch0], 1: [x for x in data_ch1]}
 
 def _load_data_fpath(fpath:str):
@@ -134,7 +139,6 @@ class SplitDataset:
 
         assert isinstance(self._mean_target, np.ndarray), "mean_target must be a numpy array"
         assert isinstance(self._std_target, np.ndarray), "std_target must be a numpy array"
-        print(self._mean_target.shape)
         # assert len(self._mean_target) == 2, "mean_target must have length 2"
         # assert len(self._std_target) == 2, "std_target must have length 2"
         self._mean_target = self._mean_target.reshape(-1,1,1)

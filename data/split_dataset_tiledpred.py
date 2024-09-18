@@ -21,6 +21,7 @@ class SplitDatasetTiledPred(SplitDataset):
         data_shape = (self._frameN, H, W)
         tiling_mode = TilingMode.ShiftBoundary
         self.tile_manager = TileIndexManager(data_shape, grid_shape, patch_shape, tiling_mode)
+        print(f'[{self.__class__.__name__}] Tile manager created with grid size {grid_size} and patch size {self._patch_size}')
 
 
     def __len__(self):
@@ -28,7 +29,6 @@ class SplitDatasetTiledPred(SplitDataset):
 
     def patch_loc(self, index):
         patch_loc_list = self.tile_manager.get_patch_location_from_dataset_idx(index)
-        print(patch_loc_list)
         return patch_loc_list
     
 

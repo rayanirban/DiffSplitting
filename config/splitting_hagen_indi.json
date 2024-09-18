@@ -16,7 +16,7 @@
     "datasets": {
         "upper_clip": false,
         "patch_size": 512,
-        "max_qval": 0.995,
+        "max_qval": 1.0,
         "train": {
             "name": "Hagen",
             // "target_channel_idx": 0, // If set then we do image translation from input to this channel 

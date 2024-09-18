@@ -7,12 +7,14 @@ import core.logger as Logger
 import core.metrics as Metrics
 from core.wandb_logger import WandbLogger
 from data.split_dataset import SplitDataset, DataLocation
+from data.split_dataset_tiledpred import SplitDatasetTiledPred
+
 from core.psnr import PSNR
 from collections import defaultdict
 # from tensorboardX import SummaryWriter
 import os
 import numpy as np
-def get_datasets(opt):
+def get_datasets(opt, tiled_pred=False):
     patch_size = opt['datasets']['patch_size']
     target_channel_idx = opt['datasets'].get('target_channel_idx', None)
     upper_clip = opt['datasets'].get('upper_clip', None)
@@ -30,13 +32,14 @@ def get_datasets(opt):
         train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
         val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
     
-    train_set = SplitDataset(data_type, train_data_location, patch_size, 
+    class_obj = SplitDataset if not tiled_pred else SplitDatasetTiledPred
+    train_set = class_obj(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
                              normalization_dict=None, enable_transforms=True,random_patching=True)
 
-    val_set = SplitDataset(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
+    val_set = class_obj(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
                            normalization_dict=train_set.get_normalization_dict(),
                            max_qval=max_qval,
                             upper_clip=upper_clip,
