@@ -26,7 +26,7 @@ def load_data(data_type, dataloc:DataLocation)->Dict[int, List[np.ndarray]]:
         elif len(dataloc.channelwise_fpath) > 0:
             return _load_data_channelwise_fpath(dataloc.channelwise_fpath)
 
-def compute_normalization_dict(data_dict, q_val=1.0, uint8_data=False):
+def compute_normalization_dict(data_dict, channel_weights:List[float], q_val=1.0, uint8_data=False):
     """
     x/x_max [0,1]
     2 x/x_max -1 [-1,1]
@@ -35,8 +35,10 @@ def compute_normalization_dict(data_dict, q_val=1.0, uint8_data=False):
     """
     if uint8_data:
         tar_max = 255
-        inp_max = 2*tar_max
+        inp_max = tar_max * np.sum(channel_weights)
         img_shape = data_dict[0][0].shape
+        tar1_max = tar_max
+        tar2_max = tar_max
         if len(img_shape) == 2:
             nC = 1
         else:
@@ -44,11 +46,11 @@ def compute_normalization_dict(data_dict, q_val=1.0, uint8_data=False):
         return {
             'mean_input': inp_max/2,
             'std_input': inp_max/2,
-            'mean_target': np.array([tar_max/2]*nC*2),
-            'std_target': np.array([tar_max/2]*nC*2),
+            'mean_target': np.array([tar1_max/2]*nC + [tar2_max/2]*nC),
+            'std_target': np.array([tar1_max/2]*nC + [tar2_max/2]*nC),
             # 
-            'target0_max': tar_max,
-            'target1_max': tar_max,
+            'target0_max': tar1_max,
+            'target1_max': tar2_max,
             'input_max': inp_max
         }
 
@@ -57,7 +59,9 @@ def compute_normalization_dict(data_dict, q_val=1.0, uint8_data=False):
         tar2_unravel = np.concatenate([x.reshape(-1,) for x in data_dict[1]])
         tar1_max = np.quantile(tar1_unravel, q_val)
         tar2_max = np.quantile(tar2_unravel, q_val)
-        inp_max = np.quantile(tar1_unravel+tar2_unravel, q_val)
+        inp_max = np.quantile(tar1_unravel*channel_weights[0]+(
+                              tar2_unravel*channel_weights[1]), 
+                              q_val)
         return {
             'mean_input': inp_max/2,
             'std_input': inp_max/2,
@@ -92,13 +96,30 @@ class SplitDataset:
                  max_qval=0.98,
                  normalization_dict=None,
                  uncorrelated_channels=False,
+                 channel_weights=None,
                  upper_clip=False):
+        """
+        Args:
+        data_type: str - 'cifar10' or 'Hagen'
+        data_location: DataLocation - location of the data (file path or directory)
+        patch_size: int - size of the patch on which the model will be trained
+        target_channel_idx: int - While the input is created from both channels, this decides which target needs to be predicted. If None, both channels are used as target.
+        random_patching: bool - If True, random patching is done. Else, patches are extracted in a grid.
+        enable_transforms: bool - If True, data augmentation is enabled.
+        max_qval: float - quantile value for clipping the data and for computing the max value for the normalization dict.
+        normalization_dict: dict - If provided, the normalization dict is used. Else, it is computed.
+        uncorrelated_channels: bool - If True, the two diffrent random locations are used to crop patches from the two channels. Else, the same location is used.
+        channel_weights: list - Input is the weighted sum of the two channels. If None, the weights are set to 1.
+        upper_clip: bool - If True, the data is clipped to the max_qval quantile value.
+        """
 
         assert data_type in ['cifar10','Hagen'], "data_type must be one of ['cifar10','Hagen']"
 
         self._patch_size = patch_size
         self._data_location = data_location
-
+        self._channel_weights = channel_weights
+        if self._channel_weights is None:
+            self._channel_weights = [1,1]
         # channel_idx is the key. value is list of full sized frames.
         self._data_dict = load_data(data_type, self._data_location)
         self._frameN = min(len(self._data_dict[0]), len(self._data_dict[1]))
@@ -117,7 +138,7 @@ class SplitDataset:
 
         if normalization_dict is None:
             print("Computing mean and std for normalization")
-            normalization_dict = compute_normalization_dict(self._data_dict, q_val=max_qval, uint8_data=data_type=='cifar10')
+            normalization_dict = compute_normalization_dict(self._data_dict, self._channel_weights, q_val=max_qval, uint8_data=data_type=='cifar10')
 
         if upper_clip:
             print("Clipping data to {} quantile".format(max_qval))
@@ -149,6 +170,8 @@ class SplitDataset:
         if upper_clip is not None:
             msg += f' UpperClip:{int(upper_clip)}'
         msg += f'Uncor:{uncorrelated_channels}'
+        if channel_weights is not None:
+            msg += f' ChW:{self._channel_weights}'
         print(msg)
 
     def get_normalization_dict(self):
@@ -225,7 +248,7 @@ class SplitDataset:
                 patch1 = patch1.transpose(2,0,1)
                 patch2 = patch2.transpose(2,0,1)
 
-        inp = patch1 + patch2
+        inp = self._channel_weights[0]*patch1 + self._channel_weights[1]*patch2
         if inp.ndim == 2:
             inp = inp[None]
             patch1 = patch1[None]
@@ -250,10 +273,13 @@ if __name__ == "__main__":
     # data_location = DataLocation(directory='/group/jug/ashesh/data/cifar-10-python/train')
     patch_size = 256
     data_type = 'Hagen'
+    nC = 1 if data_type == 'Hagen' else 3
     uncorrelated_channels = False
+    channel_weights = [1,0.3]
     dataset = SplitDataset(data_type, data_location, patch_size, 
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=True,
+                             channel_weights=channel_weights,
                              uncorrelated_channels=True, random_patching=True)
     print(len(dataset))
     for i in range(len(dataset)):
@@ -270,10 +296,10 @@ if __name__ == "__main__":
     data= dataset[0]
     inp = data['input']
     target = data['target']
-    _,ax = plt.subplots(figsize=(3,1),ncols=3)
+    _,ax = plt.subplots(figsize=(6,2),ncols=3)
     ax[0].imshow((2+inp.transpose(1,2,0))/4)
-    ax[1].imshow((1 +target[:3].transpose(1,2,0))/2)
-    ax[2].imshow((1+target[3:].transpose(1,2,0))/2)
+    ax[1].imshow((1 +target[:nC].transpose(1,2,0))/2)
+    ax[2].imshow((1+target[nC:].transpose(1,2,0))/2)
     # disable axis
     for a in ax:
         a.axis('off')

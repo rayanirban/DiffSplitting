@@ -19,7 +19,8 @@ def get_datasets(opt, tiled_pred=False):
     target_channel_idx = opt['datasets'].get('target_channel_idx', None)
     upper_clip = opt['datasets'].get('upper_clip', None)
     max_qval = opt['datasets']['max_qval']
-    
+    channel_weights = opt['datasets'].get('channel_weights', None)
+
     data_type = opt['datasets']['train']['name']  
     uncorrelated_channels = opt['datasets']['train']['uncorrelated_channels']
     assert data_type in ['cifar10', 'Hagen']
@@ -37,12 +38,14 @@ def get_datasets(opt, tiled_pred=False):
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
+                                channel_weights=channel_weights,
                              normalization_dict=None, enable_transforms=True,random_patching=True)
 
     val_set = class_obj(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
                            normalization_dict=train_set.get_normalization_dict(),
                            max_qval=max_qval,
                             upper_clip=upper_clip,
+                            channel_weights=channel_weights,
                            enable_transforms=False,
                                                      random_patching=False)
     return train_set, val_set

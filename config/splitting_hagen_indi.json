@@ -17,6 +17,7 @@
         "upper_clip": false,
         "patch_size": 512,
         "max_qval": 1.0,
+        "channel_weights": [1, 0.3],
         "train": {
             "name": "Hagen",
             // "target_channel_idx": 0, // If set then we do image translation from input to this channel 
@@ -28,7 +29,7 @@
             "batch_size": 4,
             "num_workers": 4,
             "use_shuffle": true,
-            "uncorrelated_channels": true
+            "uncorrelated_channels": false
         },
         "val": {
             "name": "Hagen",
