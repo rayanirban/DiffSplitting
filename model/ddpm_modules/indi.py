@@ -20,6 +20,7 @@ class InDI(GaussianDiffusion):
         lr_reduction=None,
         conditional=True,
         schedule_opt=None,
+        val_schedule_opt=None,
         e = 0.01,
     ):
         super().__init__(denoise_fn, image_size, channels=channels, loss_type=loss_type, conditional=conditional, 
@@ -35,11 +36,12 @@ class InDI(GaussianDiffusion):
         if self._noise_mode == 'none':
             self.e = 0.0
         
+        self.val_num_timesteps = val_schedule_opt['n_timestep']
+        
         msg = f'Sampling mode: {self._t_sampling_mode}, Noise mode: {self._noise_mode}'
         print(f'[{self.__class__.__name__}]: {msg}')
 
     def set_new_noise_schedule(self, schedule_opt, device):
-        # TODO: for brownian motion, this will change.
         self.num_timesteps= schedule_opt['n_timestep']
     
 
@@ -56,16 +58,18 @@ class InDI(GaussianDiffusion):
         raise NotImplementedError("This is not needed.")
 
     @torch.no_grad()
-    def p_sample(self, x, t, step_size=None, clip_denoised=True, repeat_noise=False, condition_x=None):
-        # TODO: for brownian motion, this will change.
+    def p_sample(self, x, t, step_size=None, clip_denoised=True, num_timesteps=None, repeat_noise=False, condition_x=None):
+        if num_timesteps is None:
+            num_timesteps = self.num_timesteps
+
         if step_size is None:
-            step_size = 1.0/ self.num_timesteps
+            step_size = 1.0/ num_timesteps
             
         if t == 0:
             return x
         assert t > 0, "t must be non-negative."
 
-        t_float = torch.Tensor([t/self.num_timesteps]).to(x.device)
+        t_float = torch.Tensor([t/num_timesteps]).to(x.device)
         x0 = self.denoise_fn(x, t_float)
         if clip_denoised:
             x0.clamp_(-1., 1.)
@@ -82,9 +86,12 @@ class InDI(GaussianDiffusion):
             return data_component + noise_component
 
     @torch.no_grad()
-    def p_sample_loop(self, x_in, clip_denoised=True, continous=False):
+    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None):
+        if num_timesteps is None:
+            num_timesteps = self.num_timesteps
+
         device = x_in.device
-        sample_inter = (1 | (self.num_timesteps//10))
+        sample_inter = (1 | (num_timesteps//10))
         assert self.conditional is False
         b = x_in.shape[0]
         
@@ -92,8 +99,8 @@ class InDI(GaussianDiffusion):
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
         t_start = 1
-        for i in tqdm(reversed(range(t_start, self.num_timesteps+1)), desc='sampling loop time step', total=self.num_timesteps):
-            img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised)
+        for i in tqdm(reversed(range(t_start, num_timesteps+1)), desc='sampling loop time step', total=num_timesteps):
+            img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised, num_timesteps=num_timesteps)
             if i % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)
         
@@ -128,7 +135,7 @@ class InDI(GaussianDiffusion):
 
     @torch.no_grad()
     def super_resolution(self, x_in,clip_denoised=True, continous=False):
-        return self.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous)
+        return self.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps)
 
     @torch.no_grad()
     def interpolate(self, x1, x2, t=None, lam=0.5):
@@ -145,7 +152,6 @@ class InDI(GaussianDiffusion):
         return (1-t)*x_start + t*x_end + noise * self.get_t_times_e(t)
         
     def sample_t(self, batch_size, device):
-
         if self._t_sampling_mode == 'linear_ramp':
             # probablity of t=0 is 0, which is what we want.
             probablity =torch.arange(self.num_timesteps)

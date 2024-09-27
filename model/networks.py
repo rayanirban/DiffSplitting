@@ -114,7 +114,8 @@ def define_G(opt):
         loss_type=model_opt['loss_type'],    # L1 or L2
         lr_reduction=model_opt['lr_reduction'],
         conditional=model_opt['diffusion']['conditional'],
-        schedule_opt=model_opt['beta_schedule']['train']
+        schedule_opt=model_opt['beta_schedule']['train'],
+        val_schedule_opt=model_opt['beta_schedule']['val'],
     )
     if opt['phase'] == 'train':
         # init_weights(netG, init_type='kaiming', scale=0.1)
