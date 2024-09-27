@@ -11,6 +11,7 @@ from data.split_dataset_tiledpred import SplitDatasetTiledPred
 
 from core.psnr import PSNR
 from collections import defaultdict
+from predtiler.dataset import get_tiling_dataset, get_tile_manager
 # from tensorboardX import SummaryWriter
 import os
 import numpy as np
@@ -33,13 +34,20 @@ def get_datasets(opt, tiled_pred=False):
         train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
         val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
     
-    class_obj = SplitDataset if not tiled_pred else SplitDatasetTiledPred
-    train_set = class_obj(data_type, train_data_location, patch_size, 
+    
+    train_set = SplitDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
                                 channel_weights=channel_weights,
                              normalization_dict=None, enable_transforms=True,random_patching=True)
+
+    if not tiled_pred:
+        class_obj = SplitDataset 
+    else:
+        data_shape = (10, 2048, 2048)
+        tile_manager = get_tile_manager(data_shape, (1, patch_size//2, patch_size//2), (1, patch_size, patch_size))
+        class_obj = get_tiling_dataset(SplitDataset, tile_manager)
 
     val_set = class_obj(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
                            normalization_dict=train_set.get_normalization_dict(),

@@ -27,7 +27,7 @@ class SplitDatasetTiledPred(SplitDataset):
     def __len__(self):
         return self.tile_manager.total_grid_count()
 
-    def patch_loc(self, index):
+    def patch_location(self, index):
         patch_loc_list = self.tile_manager.get_patch_location_from_dataset_idx(index)
         return patch_loc_list
     

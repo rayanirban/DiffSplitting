@@ -206,7 +206,7 @@ class SplitDataset:
     def frame_idx(self, index):
         return index // self.patch_count_per_frame()
     
-    def patch_loc(self, index):
+    def patch_location(self, index):
         """
         Returns the frame index along with co-ordinates of the top-left corner of the patch in the frame.
         """
@@ -225,7 +225,7 @@ class SplitDataset:
             h_idx = np.random.randint(0, h-self._patch_size) if h > self._patch_size else 0
             w_idx = np.random.randint(0, w-self._patch_size) if w > self._patch_size else 0
         else:
-            frame_idx, h_idx, w_idx = self.patch_loc(index)
+            frame_idx, h_idx, w_idx = self.patch_location(index)
         
         img1 = self._data_dict[0][frame_idx]
 
