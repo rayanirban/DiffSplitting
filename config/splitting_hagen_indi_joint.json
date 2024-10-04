@@ -15,10 +15,9 @@
     },
     "datasets": {
         "upper_clip": false,
-        "patch_size": 512,
+        "patch_size": 256,
         "max_qval": 0.995,
         "channel_weights": [1.0, 1.0],
-        "target_channel_idx": 1,
         "train": {
             "name": "Hagen",
             // "target_channel_idx": 0, // If set then we do image translation from input to this channel 
@@ -39,13 +38,14 @@
                 "ch0": "/group/jug/ashesh/data/diffsplit_hagen/val/val_actin-60x-noise2-highsnr.tif",
                 "ch1": "/group/jug/ashesh/data/diffsplit_hagen/val/val_mito-60x-noise2-highsnr.tif"
             },
-            "patch_size": 512,
+            "patch_size": 256,
             "datatype": "img" //lmdb or img, path of img files
         }
     },
     "model": {
-        "which_model_G": "indi", // use the ddpm or sr3 network structure
+        "which_model_G": "joint_indi", // use the ddpm or sr3 network structure
         "loss_type": "l1", // TODO: this is not used now, but will be used in future to test mutliple loss functions
+        "w_input_loss": 0.5,
         "lr_reduction": "mean",
         "finetune_norm": false,
         "unet": {

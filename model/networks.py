@@ -82,6 +82,7 @@ def init_weights(net, init_type='kaiming', scale=1, std=0.02):
 # Generator
 def define_G(opt):
     model_opt = opt['model']
+    model_kwargs = {}
     if model_opt['which_model_G'] == 'ddpm':
         from .ddpm_modules.unet import UNet
         from .ddpm_modules.diffusion import GaussianDiffusion as netG_class
@@ -92,6 +93,10 @@ def define_G(opt):
     elif model_opt['which_model_G'] == 'indi':
         from .ddpm_modules.unet import UNet
         from .ddpm_modules.indi import InDI as netG_class
+    elif model_opt['which_model_G'] == 'joint_indi':
+        from .ddpm_modules.unet import UNet
+        from .ddpm_modules.joint_indi import JointIndi as netG_class
+        model_kwargs['w_input_loss'] = model_opt['w_input_loss']
 
     if ('norm_groups' not in model_opt['unet']) or model_opt['unet']['norm_groups'] is None:
         model_opt['unet']['norm_groups']=32
@@ -105,7 +110,7 @@ def define_G(opt):
         attn_res=model_opt['unet']['attn_res'],
         res_blocks=model_opt['unet']['res_blocks'],
         dropout=model_opt['unet']['dropout'],
-        image_size=model_opt['diffusion']['image_size']
+        image_size=model_opt['diffusion']['image_size'],
     )
     netG = netG_class(
         model,
@@ -117,6 +122,7 @@ def define_G(opt):
         conditional=model_opt['diffusion']['conditional'],
         schedule_opt=model_opt['beta_schedule']['train'],
         val_schedule_opt=model_opt['beta_schedule']['val'],
+        **model_kwargs
     )
     if opt['phase'] == 'train':
         # init_weights(netG, init_type='kaiming', scale=0.1)

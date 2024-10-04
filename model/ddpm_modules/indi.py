@@ -177,13 +177,12 @@ class InDI(GaussianDiffusion):
             t[mask_for_max] = maxv
         return t
 
-    def p_losses(self, x_in, noise=None):
+    def get_prediction_during_training(self, x_in, noise=None):
         # pass
         x_start = x_in['target']
         x_end = x_in['input']
         # we want to make sure that the shape for x_end is the same as x_start.
         x_end = torch.concat([x_end]*self.out_channel, dim=1)
-
         b, *_ = x_start.shape
         t = self.sample_t(b, x_start.device)
         t_float = t/self.num_timesteps
@@ -191,9 +190,15 @@ class InDI(GaussianDiffusion):
         x_noisy = self.q_sample(x_start=x_start, x_end=x_end, t=t_float, noise=noise)
         assert self.conditional is False
         x_recon = self.denoise_fn(x_noisy, t_float)
+        return x_recon
+
+    def p_losses(self, x_in, noise=None):
+        x_start = x_in['target']
+        x_recon = self.get_prediction_during_training(x_in, noise=noise)    
         loss = self.loss_func(x_start, x_recon)
 
         return loss
 
     def forward(self, x, *args, **kwargs):
         return self.p_losses(x, *args, **kwargs)
+
