@@ -15,9 +15,10 @@
     },
     "datasets": {
         "upper_clip": false,
-        "patch_size": 512,
+        "patch_size": 128,
         "max_qval": 0.995,
-        "channel_weights": [1, 0.3],
+        "channel_weights": [1.0, 1.0],
+        "target_channel_idx": 0,
         "train": {
             "name": "Hagen",
             // "target_channel_idx": 0, // If set then we do image translation from input to this channel 
@@ -38,7 +39,7 @@
                 "ch0": "/group/jug/ashesh/data/diffsplit_hagen/val/val_actin-60x-noise2-highsnr.tif",
                 "ch1": "/group/jug/ashesh/data/diffsplit_hagen/val/val_mito-60x-noise2-highsnr.tif"
             },
-            "patch_size": 512,
+            "patch_size": 128,
             "datatype": "img" //lmdb or img, path of img files
         }
     },
@@ -48,8 +49,8 @@
         "lr_reduction": "mean",
         "finetune_norm": false,
         "unet": {
-            "in_channel": 2, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
-            "out_channel": 2,
+            "in_channel": 1, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
+            "out_channel": 1,
             "inner_channel": 16,
             "norm_groups": 16,
             "channel_multiplier": [
@@ -83,7 +84,7 @@
         },
         "diffusion": {
             "image_size": 32,
-            "channels": 2, //sample channel
+            "channels": 1, //sample channel
             "conditional": false // unconditional generation or unconditional generation(super_resolution)
         }
     },

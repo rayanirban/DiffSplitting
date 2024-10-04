@@ -112,6 +112,7 @@ def define_G(opt):
         image_size=model_opt['diffusion']['image_size'],
         channels=model_opt['diffusion']['channels'],
         loss_type=model_opt['loss_type'],    # L1 or L2
+        out_channel=model_opt['unet']['out_channel'],
         lr_reduction=model_opt['lr_reduction'],
         conditional=model_opt['diffusion']['conditional'],
         schedule_opt=model_opt['beta_schedule']['train'],

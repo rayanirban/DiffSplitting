@@ -17,6 +17,7 @@ class InDI(GaussianDiffusion):
         image_size,
         channels=3,
         loss_type='l1',
+        out_channel=2,
         lr_reduction=None,
         conditional=True,
         schedule_opt=None,
@@ -27,6 +28,7 @@ class InDI(GaussianDiffusion):
                          lr_reduction=lr_reduction,
                          schedule_opt=schedule_opt)
         self.e = e
+        self.out_channel = out_channel
         self._t_sampling_mode = 'linear_indi'
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp', 'linear_indi']
         self._linear_indi_a = 1.0
@@ -95,7 +97,7 @@ class InDI(GaussianDiffusion):
         assert self.conditional is False
         b = x_in.shape[0]
         
-        x_in = torch.cat([x_in, x_in], dim=1)
+        x_in = torch.cat([x_in]*self.out_channel, dim=1)
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
         t_start = 1
@@ -180,7 +182,7 @@ class InDI(GaussianDiffusion):
         x_start = x_in['target']
         x_end = x_in['input']
         # we want to make sure that the shape for x_end is the same as x_start.
-        x_end = torch.concat([x_end, x_end], dim=1)
+        x_end = torch.concat([x_end]*self.out_channel, dim=1)
 
         b, *_ = x_start.shape
         t = self.sample_t(b, x_start.device)
