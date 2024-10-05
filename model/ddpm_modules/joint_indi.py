@@ -15,6 +15,8 @@ class JointIndi(nn.Module):
         loss_type='l1',
         out_channel=2,
         lr_reduction=None,
+        denoise_fn_ch1=None,
+        denoise_fn_ch2=None,
         conditional=True,
         schedule_opt=None,
         val_schedule_opt=None,
@@ -22,7 +24,10 @@ class JointIndi(nn.Module):
         e = 0.01,
     ):
         super().__init__()
-        self.indi1 = InDI(denoise_fn, image_size, channels=channels, 
+        assert denoise_fn_ch1 is not None, "denoise_fn_ch1 is not provided."
+        assert denoise_fn_ch2 is not None, "denoise_fn_ch2 is not provided."
+        assert denoise_fn is None, "denoise_fn is not needed."
+        self.indi1 = InDI(denoise_fn_ch1, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 
@@ -31,7 +36,7 @@ class JointIndi(nn.Module):
                           val_schedule_opt=val_schedule_opt, 
                           e=e)
 
-        self.indi2 = InDI(denoise_fn, image_size, channels=channels, 
+        self.indi2 = InDI(denoise_fn_ch2, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 

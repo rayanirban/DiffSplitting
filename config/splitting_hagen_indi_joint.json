@@ -45,7 +45,7 @@
     "model": {
         "which_model_G": "joint_indi", // use the ddpm or sr3 network structure
         "loss_type": "l1", // TODO: this is not used now, but will be used in future to test mutliple loss functions
-        "w_input_loss": 0.5,
+        "w_input_loss": 0.0,
         "lr_reduction": "mean",
         "finetune_norm": false,
         "unet": {
