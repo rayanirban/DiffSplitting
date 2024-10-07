@@ -17,6 +17,14 @@ def mkdirs(paths):
 def get_timestamp():
     return datetime.now().strftime('%y%m%d_%H%M%S')
 
+def load_json(opt_path):
+    json_str = ''
+    with open(opt_path, 'r') as f:
+        for line in f:
+            line = line.split('//')[0] + '\n'
+            json_str += line
+    opt = json.loads(json_str, object_pairs_hook=OrderedDict)
+    return opt
 
 def parse(args):
     phase = args.phase

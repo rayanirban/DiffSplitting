@@ -126,6 +126,7 @@ class SplitDataset:
         self._target_channel_idx = target_channel_idx
         self._random_patching = random_patching
         self._uncorrelated_channels = uncorrelated_channels
+        self._max_qval = max_qval
 
         self._transform = None
         if enable_transforms:
@@ -138,10 +139,10 @@ class SplitDataset:
 
         if normalization_dict is None:
             print("Computing mean and std for normalization")
-            normalization_dict = compute_normalization_dict(self._data_dict, self._channel_weights, q_val=max_qval, uint8_data=data_type=='cifar10')
+            normalization_dict = compute_normalization_dict(self._data_dict, self._channel_weights, q_val=self._max_qval, uint8_data=data_type=='cifar10')
 
         if upper_clip:
-            print("Clipping data to {} quantile".format(max_qval))
+            print("Clipping data to {} quantile".format(self._max_qval))
             self._data_dict[0] = [np.clip(x, 0, normalization_dict['target0_max']) for x in self._data_dict[0]]
             self._data_dict[1] = [np.clip(x, 0, normalization_dict['target1_max']) for x in self._data_dict[1]]
 
@@ -166,7 +167,7 @@ class SplitDataset:
         self._std_target = self._std_target.reshape(-1,1,1)
 
         msg = f'[{self.__class__.__name__}] Data: {self._frameN}x{len(self._data_dict.keys())}x{self._data_dict[0][0].shape}'
-        msg += f' Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{max_qval}'
+        msg += f' Patch:{patch_size} Random:{int(random_patching)} Aug:{self._transform is not None} Q:{self._max_qval}'
         if upper_clip is not None:
             msg += f' UpperClip:{int(upper_clip)}'
         msg += f'Uncor:{uncorrelated_channels}'
@@ -218,7 +219,7 @@ class SplitDataset:
         return frame_idx, h_idx*self._patch_size, w_idx*self._patch_size
 
 
-    def __getitem__(self, index):
+    def _get_location(self, index):
         if self._random_patching:
             frame_idx = np.random.randint(0, self._frameN)
             h,w = self._data_dict[0][frame_idx].shape[-2:]
@@ -226,7 +227,11 @@ class SplitDataset:
             w_idx = np.random.randint(0, w-self._patch_size) if w > self._patch_size else 0
         else:
             frame_idx, h_idx, w_idx = self.patch_location(index)
-        
+        return frame_idx, h_idx, w_idx
+    
+    def __getitem__(self, index):
+
+        frame_idx, h_idx, w_idx = self._get_location(index)    
         img1 = self._data_dict[0][frame_idx]
 
         if self._uncorrelated_channels:

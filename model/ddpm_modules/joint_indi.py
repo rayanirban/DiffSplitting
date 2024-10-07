@@ -51,6 +51,8 @@ class JointIndi(nn.Module):
         self.offset_param = nn.Parameter(torch.tensor(0.0))
         self.scale_param = nn.Parameter(torch.tensor(1.0))
         self.w_input_loss = w_input_loss
+        self.current_log_dict = {}
+
         print(f'[{self.__class__.__name__}]: w_input_loss: {self.w_input_loss}')
     
     def get_offset(self):
@@ -61,6 +63,9 @@ class JointIndi(nn.Module):
     
     def get_alpha(self):
         return torch.sigmoid(self.alpha_param)
+    
+    def get_current_log(self):
+        return self.current_log_dict
     
     def create_input(self, pred1, pred2):
         """
@@ -85,6 +90,13 @@ class JointIndi(nn.Module):
         loss_splitting = (loss_ch1 + loss_ch2) / 2
         pred_input = self.create_input(x_recon_ch1, x_recon_ch2)
         loss_input = self.indi1.loss_func(x_in['input'], pred_input)
+        
+        self.current_log_dict['loss_input'] = loss_input.item()
+        self.current_log_dict['loss_splitting'] = loss_splitting.item()
+        self.current_log_dict['alpha'] = self.get_alpha().item()
+        self.current_log_dict['offset'] = self.get_offset().item()
+        self.current_log_dict['scale'] = self.get_scale().item()
+        
         return loss_splitting + self.w_input_loss*loss_input
     
     # @torch.no_grad()

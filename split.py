@@ -140,7 +140,7 @@ if __name__ == "__main__":
                     message = '<epoch:{:3d}, iter:{:8,d}> '.format(
                         current_epoch, current_step)
                     for k, v in logs.items():
-                        message += '{:s}: {:.4e} '.format(k, v)
+                        message += '{:s}: {:.2e} '.format(k, v)
                         # tb_logger.add_scalar(k, v, current_step)
                     logger.info(message)
 

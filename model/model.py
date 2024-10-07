@@ -56,6 +56,9 @@ class DDPM(BaseModel):
 
         # set log
         self.log_dict['l_pix'] = l_pix.item()
+        diffusion_log = self.netG.get_current_log()
+        for k, v in diffusion_log.items():
+            self.log_dict[k] = v
 
     def test(self, continous=False, clip_denoised=True):
         self.netG.eval()

@@ -301,3 +301,6 @@ class GaussianDiffusion(nn.Module):
 
     def forward(self, x, *args, **kwargs):
         return self.p_losses(x, *args, **kwargs)
+
+    def get_current_log(self):
+        return {}
