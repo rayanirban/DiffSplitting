@@ -88,7 +88,7 @@ def start_training(opt):
     val_loader = DataLoader(val_set, batch_size=opt['datasets']['train']['batch_size'], shuffle=False, num_workers=opt['datasets']['train']['num_workers'])
 
     optimizer = Adam(model.parameters(), lr=opt['train']['optimizer']['lr'])
-    lr_scheduler_patience = 50
+    lr_scheduler_patience = 20
     # learning rate scheduler.
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                             mode='min',
