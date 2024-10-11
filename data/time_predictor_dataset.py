@@ -3,39 +3,43 @@ import numpy as np
 from tqdm import tqdm
 from data.split_dataset import SplitDataset, compute_normalization_dict, DataLocation
 
-class Normalizer:
-    """
-    We will use this class to normalize the input images for different values of t
-    """
-    def __init__(self, data_dict, max_qval, step_size=0.05):
-        self.step_size = step_size
-        self.alpha_values= np.arange(0.0, 1.0 + step_size, step_size)
-        self.normalization_dicts = []
-        for alpha in tqdm(self.alpha_values):
-            n_dict = compute_normalization_dict(data_dict, [alpha, 1-alpha], q_val=max_qval, uint8_data=False)
-            self.normalization_dicts.append(n_dict)
+# class Normalizer:
+#     """
+#     We will use this class to normalize the input images for different values of t
+#     """
+#     def __init__(self, data_dict, max_qval, step_size=0.05):
+#         self.step_size = step_size
+#         self.alpha_values= np.arange(0.0, 1.0 + step_size, step_size)
+#         self.normalization_dicts = []
+#         for alpha in tqdm(self.alpha_values):
+#             n_dict = compute_normalization_dict(data_dict, [alpha, 1-alpha], q_val=max_qval, uint8_data=False)
+#             self.normalization_dicts.append(n_dict)
 
-    def get_for_t(self, t):
-        s_idx = np.floor(t/self.step_size)
-        e_idx = np.ceil(t/self.step_size)
-        if s_idx == e_idx:
-            return self.normalization_dicts[int(s_idx)]
-        else:
-            s_dict = self.normalization_dicts[int(s_idx)]
-            e_dict = self.normalization_dicts[int(e_idx)]
-            w = (t - s_idx*self.step_size)/self.step_size
-            # print(s_idx, e_idx,t, w)
-            return {k: (1-w)*s_dict[k] + (w)*e_dict[k] for k in s_dict.keys()}
+#     def get_for_t(self, t):
+#         s_idx = np.floor(t/self.step_size)
+#         e_idx = np.ceil(t/self.step_size)
+#         if s_idx == e_idx:
+#             return self.normalization_dicts[int(s_idx)]
+#         else:
+#             s_dict = self.normalization_dicts[int(s_idx)]
+#             e_dict = self.normalization_dicts[int(e_idx)]
+#             w = (t - s_idx*self.step_size)/self.step_size
+#             # print(s_idx, e_idx,t, w)
+#             return {k: (1-w)*s_dict[k] + (w)*e_dict[k] for k in s_dict.keys()}
     
-    def normalize_input(self, img, t):
-        norm_dict = self.get_for_t(t)
-        return (img - norm_dict['mean_input'])/norm_dict['std_input']
+#     def normalize_input(self, img, t):
+#         norm_dict = self.get_for_t(t)
+#         return (img - norm_dict['mean_input'])/norm_dict['std_input']
     
 class TimePredictorDataset(SplitDataset):
     def __init__(self, *args, **kwargs):
+        if 'step_size' in kwargs:
+            step_size = kwargs.pop('step_size')
+        else:
+            step_size = 0.05
         super(TimePredictorDataset, self).__init__(*args, **kwargs)
         self.normalization_dicts = []
-        self.normalizer = Normalizer(self._data_dict, self._max_qval)
+        # self.normalizer = Normalizer(self._data_dict, self._max_qval, step_size= step_size)
 
         
     def __getitem__(self, index):
@@ -62,12 +66,16 @@ class TimePredictorDataset(SplitDataset):
                 patch1 = patch1.transpose(2,0,1)
                 patch2 = patch2.transpose(2,0,1)
 
+        # normalize the target 
+        target = np.stack([patch1, patch2], axis=0)
+        target = self.normalize_target(target)
+        patch1, patch2 = target[0], target[1]
         t = np.random.rand()
         inp = t*patch1 + (1-t)*patch2
         if inp.ndim == 2:
             inp = inp[None]
         
-        inp = self.normalizer.normalize_input(inp,t)
+        # inp = self.normalizer.normalize_input(inp,t)
         return inp, t
 
 if __name__ == "__main__":
@@ -86,7 +94,13 @@ if __name__ == "__main__":
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=False,
                              channel_weights=channel_weights,
-                             uncorrelated_channels=False, random_patching=False)
+                             uncorrelated_channels=False, random_patching=False,
+                             step_size=0.25)
+    for i in range(len(dataset)):
+        img, t = dataset[i]
+        if img.max() > 0:
+            print(img.max(), t)
+    
     print(len(dataset))
     img, t = dataset[10]
     plt.imshow(img[0])

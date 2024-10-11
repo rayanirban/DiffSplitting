@@ -43,9 +43,10 @@
         }
     },
     "model": {
-        "loss_type": "l1", // TODO: this is not used now, but will be used in future to test mutliple loss functions
+        "loss_type": "l2", // TODO: this is not used now, but will be used in future to test mutliple loss functions
         "lr_reduction": "mean",
         "finetune_norm": false,
+        "which_model_G": "UnetClassifier",
         "unet": {
             "in_channel": 1, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
             "out_channel": 1,
