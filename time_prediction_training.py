@@ -62,10 +62,10 @@ def start_training(opt):
     if opt['enable_wandb']:
         import wandb
         wandb_logger = WandbLogger(opt, opt['path']['experiment_root'], opt['experiment_name'])
-        wandb.define_metric('validation/val_step')
-        wandb.define_metric('epoch')
-        wandb.define_metric("validation/*", step_metric="val_step")
-        val_step = 0
+        # wandb.define_metric('validation/val_step')
+        # wandb.define_metric('epoch')
+        # wandb.define_metric("validation/*", step_metric="val_step")
+        # val_step = 0
     else:
         wandb_logger = None
 
@@ -88,7 +88,7 @@ def start_training(opt):
     val_loader = DataLoader(val_set, batch_size=opt['datasets']['train']['batch_size'], shuffle=False, num_workers=opt['datasets']['train']['num_workers'])
 
     optimizer = Adam(model.parameters(), lr=opt['train']['optimizer']['lr'])
-    lr_scheduler_patience = 20
+    lr_scheduler_patience = opt['train']['lr_scheduler_patience']
     # learning rate scheduler.
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                             mode='min',
@@ -103,7 +103,7 @@ def start_training(opt):
 
     # tqdm bar with loss 
     epoch_losses = []
-    num_epochs = 500
+    num_epochs = opt['train']['num_epochs']
     best_val_loss = 1e6
     for epoch in range(num_epochs):
         bar = tqdm(enumerate(train_loader))
@@ -120,7 +120,7 @@ def start_training(opt):
             bar.set_description(f'Ep:{epoch} loss {np.mean(loss_arr)} val_loss {best_val_loss}')
             optimizer.step()
             if wandb_logger is not None:
-                wandb_logger.log_metrics({'training/loss_step':loss.item()})
+                wandb_logger.log_metrics({'train_loss_step':loss.item()})
 
         epoch_losses.append(np.mean(loss_arr))
         scheduler.step(epoch_losses[-1])
@@ -133,8 +133,10 @@ def start_training(opt):
             y_pred = model(x)
             loss = loss_fn(y_pred, y.type(torch.float32))
             val_losses.append(loss.item())
-            if wandb_logger is not None:
-                wandb_logger.log_metrics({'validation/loss':loss.item()})
+
+
+        if wandb_logger is not None:
+            wandb_logger.log_metrics({'val_loss':np.mean(val_losses)})
         # print(f'Ep:{epoch} Val loss {np.mean(val_losses)}')
         # save best model
 
