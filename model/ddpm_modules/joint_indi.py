@@ -78,9 +78,23 @@ class JointIndi(nn.Module):
         return scale * correctly_weight_input + offset
     
 
+    def sample_t(self, batch_size, device):
+        assert self._t_sampling_mode == 'linear_indi'
+        
+        # this 0.5 will be potentially changing the game. 
+        assert self.num_timesteps % 2 == 0, "num_timesteps should be even since we are dividing it by 2 in the next line."
+        maxv = int(self.num_timesteps * 0.5)
+        t = torch.randint(1, maxv, (batch_size,),device=device).long()
+        alpha = 1/(self._linear_indi_a + 1)
+        probab = torch.rand(t.shape, device=device)
+        mask_for_max = probab > alpha
+        t[mask_for_max] = maxv
+        return t
+
     def p_losses(self, x_in, noise=None):
-        x_in_ch1 = {'target': x_in['target'][:,0:1], 'input': x_in['input']}
-        x_in_ch2 = {'target': x_in['target'][:,1:2], 'input': x_in['input']}
+        # input_ = x_in['target'][:,:1]*self.t_mid + x_in['target'][:,1:]*(1-self.t_mid)
+        x_in_ch1 = {'target': x_in['target'][:,0:1], 'input': x_in['target'][:,1:2]}
+        x_in_ch2 = {'target': x_in['target'][:,1:2], 'input': x_in['target'][:,0:1]}
 
         x_recon_ch1 = self.indi1.get_prediction_during_training(x_in_ch1, noise=noise)    
         x_recon_ch2 = self.indi2.get_prediction_during_training(x_in_ch2, noise=noise)
@@ -88,15 +102,15 @@ class JointIndi(nn.Module):
         loss_ch1 = self.indi1.loss_func(x_in_ch1['target'], x_recon_ch1)
         loss_ch2 = self.indi2.loss_func(x_in_ch2['target'], x_recon_ch2)
         loss_splitting = (loss_ch1 + loss_ch2) / 2
-        pred_input = self.create_input(x_recon_ch1, x_recon_ch2)
-        loss_input = self.indi1.loss_func(x_in['input'], pred_input)
+        loss_input = 0.0
+        # pred_input = self.create_input(x_recon_ch1, x_recon_ch2)
+        # loss_input = self.indi1.loss_func(input_, pred_input)
         
-        self.current_log_dict['loss_input'] = loss_input.item()
+        # self.current_log_dict['loss_input'] = loss_input.item()
         self.current_log_dict['loss_splitting'] = loss_splitting.item()
         self.current_log_dict['alpha'] = self.get_alpha().item()
         self.current_log_dict['offset'] = self.get_offset().item()
         self.current_log_dict['scale'] = self.get_scale().item()
-        
         return loss_splitting + self.w_input_loss*loss_input
     
     # @torch.no_grad()

@@ -17,17 +17,16 @@
         "upper_clip": false,
         "patch_size": 512,
         "max_qval": 0.995,
-        "channel_weights": [1.0, 1.0],
+        // "channel_weights": [1.0, 1.0],
         "train": {
             "name": "Hagen",
-            // "target_channel_idx": 0, // If set then we do image translation from input to this channel 
             "datapath": {
                 "ch0": "/group/jug/ashesh/data/diffsplit_hagen/train/train_actin-60x-noise2-highsnr.tif",
                 "ch1": "/group/jug/ashesh/data/diffsplit_hagen/train/train_mito-60x-noise2-highsnr.tif"
             },
             "datatype": "img", //lmdb or img, path of img files
             "batch_size": 4,
-            "num_workers": 4,
+            "num_workers": 2,
             "use_shuffle": true,
             "uncorrelated_channels": false
         },
