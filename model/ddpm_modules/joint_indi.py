@@ -6,6 +6,20 @@ from model.ddpm_modules.indi import InDI
 import torch.nn as nn
 import torch
 
+class IndiCustomT(InDI):
+    def sample_t(self, batch_size, device):
+        assert self._t_sampling_mode == 'linear_indi'
+        
+        # this 0.5 will be potentially changing the game. 
+        assert self.num_timesteps % 2 == 0, "num_timesteps should be even since we are dividing it by 2 in the next line."
+        maxv = int(self.num_timesteps * 0.5)
+        t = torch.randint(1, maxv, (batch_size,),device=device).long()
+        alpha = 1/(self._linear_indi_a + 1)
+        probab = torch.rand(t.shape, device=device)
+        mask_for_max = probab > alpha
+        t[mask_for_max] = maxv
+        return t
+
 class JointIndi(nn.Module):
     def __init__(
         self,
@@ -27,7 +41,7 @@ class JointIndi(nn.Module):
         assert denoise_fn_ch1 is not None, "denoise_fn_ch1 is not provided."
         assert denoise_fn_ch2 is not None, "denoise_fn_ch2 is not provided."
         assert denoise_fn is None, "denoise_fn is not needed."
-        self.indi1 = InDI(denoise_fn_ch1, image_size, channels=channels, 
+        self.indi1 = IndiCustomT(denoise_fn_ch1, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 
@@ -36,7 +50,7 @@ class JointIndi(nn.Module):
                           val_schedule_opt=val_schedule_opt, 
                           e=e)
 
-        self.indi2 = InDI(denoise_fn_ch2, image_size, channels=channels, 
+        self.indi2 = IndiCustomT(denoise_fn_ch2, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 
@@ -77,19 +91,6 @@ class JointIndi(nn.Module):
         correctly_weight_input = alpha * pred1 + (1-alpha) * pred2
         return scale * correctly_weight_input + offset
     
-
-    def sample_t(self, batch_size, device):
-        assert self._t_sampling_mode == 'linear_indi'
-        
-        # this 0.5 will be potentially changing the game. 
-        assert self.num_timesteps % 2 == 0, "num_timesteps should be even since we are dividing it by 2 in the next line."
-        maxv = int(self.num_timesteps * 0.5)
-        t = torch.randint(1, maxv, (batch_size,),device=device).long()
-        alpha = 1/(self._linear_indi_a + 1)
-        probab = torch.rand(t.shape, device=device)
-        mask_for_max = probab > alpha
-        t[mask_for_max] = maxv
-        return t
 
     def p_losses(self, x_in, noise=None):
         # input_ = x_in['target'][:,:1]*self.t_mid + x_in['target'][:,1:]*(1-self.t_mid)
