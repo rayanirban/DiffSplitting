@@ -88,7 +88,11 @@ class InDI(GaussianDiffusion):
             return data_component + noise_component
 
     @torch.no_grad()
-    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None):
+    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None, t_float_start=1.0):
+        """
+        Args:
+            t_float_start: float. It is the t corresponding to x_in. By default, it is 1.0.
+        """
         if num_timesteps is None:
             num_timesteps = self.num_timesteps
 
@@ -100,8 +104,8 @@ class InDI(GaussianDiffusion):
         x_in = torch.cat([x_in]*self.out_channel, dim=1)
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
-        t_start = 1
-        for i in tqdm(reversed(range(t_start, num_timesteps+1)), desc='sampling loop time step', total=num_timesteps):
+        t_min = 1
+        for i in tqdm(reversed(range(t_min, int(num_timesteps*t_float_start)+1)), desc='sampling loop time step', total=num_timesteps):
             img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised, num_timesteps=num_timesteps)
             if i % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)

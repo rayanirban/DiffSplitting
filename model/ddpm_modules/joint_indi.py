@@ -123,9 +123,9 @@ class JointIndi(nn.Module):
     
     @torch.no_grad()
     def super_resolution(self, x_in,clip_denoised=True, continous=False):
-        ch1 = self.indi1.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps)
-        ch2 = self.indi2.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps)
-        return torch.cat([ch1, ch2], dim=0)
+        ch1 = self.indi1.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps, t_float_start=0.5)
+        ch2 = self.indi2.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps, t_float_start=0.5)
+        return torch.cat([ch1, ch2], dim=1)
 
 
     def forward(self, x, *args, **kwargs):
