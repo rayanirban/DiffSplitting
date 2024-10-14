@@ -97,6 +97,7 @@ class SplitDataset:
                  normalization_dict=None,
                  uncorrelated_channels=False,
                  channel_weights=None,
+                 input_from_normalized_target=False,
                  upper_clip=False):
         """
         Args:
@@ -118,6 +119,7 @@ class SplitDataset:
         self._patch_size = patch_size
         self._data_location = data_location
         self._channel_weights = channel_weights
+        self._input_from_normalized_target = input_from_normalized_target
         if self._channel_weights is None:
             self._channel_weights = [1,1]
         # channel_idx is the key. value is list of full sized frames.
@@ -173,6 +175,9 @@ class SplitDataset:
         msg += f'Uncor:{uncorrelated_channels}'
         if channel_weights is not None:
             msg += f' ChW:{self._channel_weights}'
+        
+        if self._input_from_normalized_target:
+            msg += f' InpFrmNormTar'
         print(msg)
 
     def get_normalization_dict(self):
@@ -253,16 +258,20 @@ class SplitDataset:
                 patch1 = patch1.transpose(2,0,1)
                 patch2 = patch2.transpose(2,0,1)
 
-        inp = self._channel_weights[0]*patch1 + self._channel_weights[1]*patch2
-        if inp.ndim == 2:
-            inp = inp[None]
+        if patch1.ndim == 2:
             patch1 = patch1[None]
             patch2 = patch2[None]
-        
+
         target = np.concatenate([patch1, patch2], axis=0)
-        
-        inp = self.normalize_inp(inp)
         target = self.normalize_target(target)
+        
+        if self._input_from_normalized_target:
+            inp = self._channel_weights[0]*target[0:1] + self._channel_weights[1]*target[1:2]
+        else:
+            inp = self._channel_weights[0]*patch1 + self._channel_weights[1]*patch2
+            inp = self.normalize_inp(inp)
+        
+
         if self._target_channel_idx is None:
             return {'input':inp, 'target':target}
         
@@ -285,7 +294,8 @@ if __name__ == "__main__":
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=True,
                              channel_weights=channel_weights,
-                             uncorrelated_channels=True, random_patching=True)
+                             uncorrelated_channels=True, random_patching=True,
+                             input_from_normalized_target=True)
     print(len(dataset))
     for i in range(len(dataset)):
         data = dataset[i]

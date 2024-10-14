@@ -34,13 +34,13 @@ def get_datasets(opt, tiled_pred=False):
         train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
         val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
     
-    
+    input_from_normalized_target = opt['model']['which_model_G'] == 'joint_indi'
     train_set = SplitDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
                                 channel_weights=channel_weights,
-                             normalization_dict=None, enable_transforms=True,random_patching=True)
+                             normalization_dict=None, enable_transforms=True,random_patching=True, input_from_normalized_target=input_from_normalized_target)
 
     if not tiled_pred:
         class_obj = SplitDataset 
@@ -55,7 +55,7 @@ def get_datasets(opt, tiled_pred=False):
                             upper_clip=upper_clip,
                             channel_weights=channel_weights,
                            enable_transforms=False,
-                                                     random_patching=False)
+                                                     random_patching=False, input_from_normalized_target=input_from_normalized_target)
     return train_set, val_set
 
 

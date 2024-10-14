@@ -60,18 +60,17 @@ class InDI(GaussianDiffusion):
         raise NotImplementedError("This is not needed.")
 
     @torch.no_grad()
-    def p_sample(self, x, t, step_size=None, clip_denoised=True, num_timesteps=None, repeat_noise=False, condition_x=None):
+    def p_sample(self, x, t_float, step_size=None, clip_denoised=True, num_timesteps=None, repeat_noise=False, condition_x=None):
         if num_timesteps is None:
             num_timesteps = self.num_timesteps
 
         if step_size is None:
             step_size = 1.0/ num_timesteps
             
-        if t == 0:
+        if t_float == 0:
             return x
-        assert t > 0, "t must be non-negative."
 
-        t_float = torch.Tensor([t/num_timesteps]).to(x.device)
+        t_float = torch.Tensor([t_float]).to(x.device)
         x0 = self.denoise_fn(x, t_float)
         if clip_denoised:
             x0.clamp_(-1., 1.)
@@ -80,7 +79,7 @@ class InDI(GaussianDiffusion):
             return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
         elif self._noise_mode == 'brownian':
             data_component = (step_size/t_float) * x0 + (1 - step_size/t_float) * x
-            if t_float == step_size:
+            if t_float <= step_size:
                 return data_component
             delta_e = torch.sqrt(self.get_e(t_float-step_size)**2 - self.get_e(t_float)**2)
             noise_component = torch.randn_like(x0) * (t_float - step_size) * delta_e
@@ -88,7 +87,7 @@ class InDI(GaussianDiffusion):
             return data_component + noise_component
 
     @torch.no_grad()
-    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None, t_float_start=1.0):
+    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None, t_float_start=1.0, eps=1e-8):
         """
         Args:
             t_float_start: float. It is the t corresponding to x_in. By default, it is 1.0.
@@ -97,17 +96,22 @@ class InDI(GaussianDiffusion):
             num_timesteps = self.num_timesteps
 
         device = x_in.device
-        sample_inter = (1 | (num_timesteps//10))
+        sample_inter = (1 | (num_timesteps//20))
         assert self.conditional is False
         b = x_in.shape[0]
         
         x_in = torch.cat([x_in]*self.out_channel, dim=1)
         img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
         ret_img = img
-        t_min = 1
-        for i in tqdm(reversed(range(t_min, int(num_timesteps*t_float_start)+1)), desc='sampling loop time step', total=num_timesteps):
-            img = self.p_sample(img, torch.full((b,), i, device=device, dtype=torch.long), clip_denoised=clip_denoised, num_timesteps=num_timesteps)
-            if i % sample_inter == 0:
+        
+        t_max = t_float_start
+        step_size = t_max / num_timesteps
+        t_min = step_size
+        t_values = np.arange(t_max, t_min-eps, -1*step_size)
+        for idx, t_val in tqdm(enumerate(t_values), desc='sampling loop time step', total=num_timesteps):
+            img = self.p_sample(img, torch.full((b,), t_val, device=device, dtype=torch.float32), 
+                                step_size=step_size, clip_denoised=clip_denoised, num_timesteps=num_timesteps)
+            if idx % sample_inter == 0:
                 ret_img = torch.cat([ret_img, img], dim=0)
         
         assert img.shape[0] == 1
@@ -179,7 +183,9 @@ class InDI(GaussianDiffusion):
             probab = torch.rand(t.shape, device=device)
             mask_for_max = probab > alpha
             t[mask_for_max] = maxv
-        return t
+        
+        t_float = t/self.num_timesteps
+        return t_float
 
     def get_prediction_during_training(self, x_in, noise=None):
         # pass
@@ -188,8 +194,8 @@ class InDI(GaussianDiffusion):
         # we want to make sure that the shape for x_end is the same as x_start.
         x_end = torch.concat([x_end]*self.out_channel, dim=1)
         b, *_ = x_start.shape
-        t = self.sample_t(b, x_start.device)
-        t_float = t/self.num_timesteps
+        t_float = self.sample_t(b, x_start.device)
+        
         noise = default(noise, lambda: torch.randn_like(x_start))
         x_noisy = self.q_sample(x_start=x_start, x_end=x_end, t=t_float, noise=noise)
         assert self.conditional is False

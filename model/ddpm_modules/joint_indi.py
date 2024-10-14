@@ -18,7 +18,7 @@ class IndiCustomT(InDI):
         probab = torch.rand(t.shape, device=device)
         mask_for_max = probab > alpha
         t[mask_for_max] = maxv
-        return t
+        return t / self.num_timesteps
 
 class JointIndi(nn.Module):
     def __init__(
@@ -81,19 +81,8 @@ class JointIndi(nn.Module):
     def get_current_log(self):
         return self.current_log_dict
     
-    def create_input(self, pred1, pred2):
-        """
-        It creates the input. The intention is to allow the network to correctly learn the transformation.
-        """
-        alpha = self.get_alpha()
-        offset = self.get_offset()
-        scale = self.get_scale()
-        correctly_weight_input = alpha * pred1 + (1-alpha) * pred2
-        return scale * correctly_weight_input + offset
     
-
     def p_losses(self, x_in, noise=None):
-        # input_ = x_in['target'][:,:1]*self.t_mid + x_in['target'][:,1:]*(1-self.t_mid)
         x_in_ch1 = {'target': x_in['target'][:,0:1], 'input': x_in['target'][:,1:2]}
         x_in_ch2 = {'target': x_in['target'][:,1:2], 'input': x_in['target'][:,0:1]}
 
@@ -104,8 +93,6 @@ class JointIndi(nn.Module):
         loss_ch2 = self.indi2.loss_func(x_in_ch2['target'], x_recon_ch2)
         loss_splitting = (loss_ch1 + loss_ch2) / 2
         loss_input = 0.0
-        # pred_input = self.create_input(x_recon_ch1, x_recon_ch2)
-        # loss_input = self.indi1.loss_func(input_, pred_input)
         
         # self.current_log_dict['loss_input'] = loss_input.item()
         self.current_log_dict['loss_splitting'] = loss_splitting.item()
