@@ -112,6 +112,9 @@ class JointIndi(nn.Module):
     def super_resolution(self, x_in,clip_denoised=True, continous=False):
         ch1 = self.indi1.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps, t_float_start=0.5)
         ch2 = self.indi2.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps, t_float_start=0.5)
+        if len(x_in.shape) == 4 and len(ch1.shape) == 3:
+            ch1 = ch1[None]
+            ch2 = ch2[None]
         return torch.cat([ch1, ch2], dim=1)
 
 

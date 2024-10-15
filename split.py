@@ -169,7 +169,6 @@ if __name__ == "__main__":
                         input = visuals['input'].cpu().numpy()
                         target = visuals['target'].cpu().numpy()
                         prediction = visuals['prediction'].cpu().numpy()
-                        
                         # input_img = Metrics.tensor2img(input, min_max=[input.min(), input.max()])  # uint8
                         target_arr = []
                         pred_arr = []
@@ -179,8 +178,10 @@ if __name__ == "__main__":
                         std_input = val_set.get_normalization_dict()['std_input']
                         assert input.shape[0] == 1
                         assert target.shape[0] == 1
+                        assert prediction.shape[0] == 1
                         input = input[0]
                         target = target[0]
+                        prediction = prediction[0]
                         input_img = ((input * std_input + mean_input)/2).astype(np.uint16)
                         target_img = (target * std_target + mean_target).astype(np.uint16)
                         pred_img = (prediction * std_target + mean_target)
