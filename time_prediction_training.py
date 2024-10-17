@@ -149,7 +149,7 @@ def start_training(opt):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='../config/splitting_hagen_time_predictor.json')
-    parser.add_argument('--rootdir', type=str, default='/group/jug/ashesh/training/')
+    parser.add_argument('--rootdir', type=str, default='/group/jug/ashesh/training/diffsplit')
     parser.add_argument('-enable_wandb', action='store_true')
     args = parser.parse_args()
     opt = load_json(args.config)

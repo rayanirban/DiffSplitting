@@ -1,12 +1,14 @@
 from model.ddpm_modules.unet import UNet
 import torch.nn as nn
+import torch
 
 class ForegroundMask(nn.Module):
     def __init__(self, in_channel, out_channel):
         super().__init__()
-        self.layer = nn.Conv2d(in_channel,out_channel, 3, padding=1)
+        self.layer = nn.Conv2d(in_channel,out_channel, 7, padding=3)
+    
     def forward(self, x):
-        return nn.functional.sigmoid(self.layer(x))
+        return torch.sigmoid(self.layer(x))
     
 class TimePredictor(nn.Module):
     def __init__(self,         in_channel=6,
@@ -35,10 +37,11 @@ class TimePredictor(nn.Module):
 
     def forward(self, x):
         out = self.unet(x, None)
+        out = nn.functional.relu(out)
         attention = self.foreground_mask(x)
         out = out * attention
         out = out.reshape(out.shape[0], -1)
-        return out.mean(dim=1)
+        return out.sum(dim=1)/ attention.reshape(out.shape).sum(dim=1)
 
 if __name__ == '__main__':
     import torch
