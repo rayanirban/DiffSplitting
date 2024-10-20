@@ -26,7 +26,7 @@
                 "ch1": "/group/jug/ashesh/data/diffsplit_hagen/train/train_mito-60x-noise2-highsnr.tif"
             },
             "datatype": "img", //lmdb or img, path of img files
-            "batch_size": 4,
+            "batch_size": 8,
             "num_workers": 4,
             "use_shuffle": true,
             "uncorrelated_channels": false
@@ -65,7 +65,7 @@
                 // 16
             ],
             "res_blocks": 1,
-            "dropout": 0
+            "dropout": 0.2
         }
     },
     "train": {
