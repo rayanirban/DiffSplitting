@@ -37,10 +37,16 @@ class TimePredictorDataset(SplitDataset):
             step_size = kwargs.pop('step_size')
         else:
             step_size = 0.05
+        
+        if 'gaussian_noise_std_factor' in kwargs:
+            self._gaussian_noise_std_factor = kwargs.pop('gaussian_noise_std_factor')
+        else:
+            self._gaussian_noise_std_factor = None
         super(TimePredictorDataset, self).__init__(*args, **kwargs)
         self.normalization_dicts = []
         # self.normalizer = Normalizer(self._data_dict, self._max_qval, step_size= step_size)
-
+        if self._gaussian_noise_std_factor is not None:
+            print("Adding Gaussian noise with std factor: ", self._gaussian_noise_std_factor)
         
     def __getitem__(self, index):
         
@@ -75,7 +81,9 @@ class TimePredictorDataset(SplitDataset):
         if inp.ndim == 2:
             inp = inp[None]
         
-        # inp = self.normalizer.normalize_input(inp,t)
+        if self._gaussian_noise_std_factor is not None:
+            inp += np.random.normal(0, self._gaussian_noise_std_factor*inp.std(), inp.shape)
+        
         return inp, t
 
 if __name__ == "__main__":

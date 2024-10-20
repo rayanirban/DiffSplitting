@@ -29,7 +29,8 @@
             "batch_size": 8,
             "num_workers": 4,
             "use_shuffle": true,
-            "uncorrelated_channels": false
+            "uncorrelated_channels": false,
+            "gaussian_noise_std_factor": 0.05
         },
         "val": {
             "name": "Hagen",

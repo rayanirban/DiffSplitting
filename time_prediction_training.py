@@ -37,12 +37,15 @@ def get_datasets(opt, tiled_pred=False):
     else:
         raise ValueError('Invalid data type')
     
+    gaussian_noise_std_factor = opt['datasets']['train'].get('gaussian_noise_std_factor', None)
+
     train_set = TimePredictorDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
                                 channel_weights=channel_weights,
-                             normalization_dict=None, enable_transforms=True,random_patching=True)
+                             normalization_dict=None, enable_transforms=True,random_patching=True,
+                             gaussian_noise_std_factor=gaussian_noise_std_factor,)
 
     if not tiled_pred:
         class_obj = TimePredictorDataset 
