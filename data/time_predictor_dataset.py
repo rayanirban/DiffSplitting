@@ -3,34 +3,24 @@ import numpy as np
 from tqdm import tqdm
 from data.split_dataset import SplitDataset, compute_normalization_dict, DataLocation
 
-# class Normalizer:
-#     """
-#     We will use this class to normalize the input images for different values of t
-#     """
-#     def __init__(self, data_dict, max_qval, step_size=0.05):
-#         self.step_size = step_size
-#         self.alpha_values= np.arange(0.0, 1.0 + step_size, step_size)
-#         self.normalization_dicts = []
-#         for alpha in tqdm(self.alpha_values):
-#             n_dict = compute_normalization_dict(data_dict, [alpha, 1-alpha], q_val=max_qval, uint8_data=False)
-#             self.normalization_dicts.append(n_dict)
+def compute_input_normalization_dict(data_dict, n_timesteps, mean_target, std_target):
+    mean_ch0, mean_ch1 = mean_target.squeeze()
+    std_ch0, std_ch1 = std_target.squeeze()
+    ch0 = [(x - mean_ch0)/std_ch0 for x in data_dict[0]]
+    ch1 = [(x - mean_ch1)/std_ch1 for x in data_dict[1]]
+    output = {}
+    for t_int in tqdm(np.arange(0,n_timesteps+1)):
+        t = t_int/n_timesteps
+        ch_min = 1e10
+        ch_max = -1e10
+        for idx in range(len(ch0)):
+            ch = t*ch0[idx] + (1-t)*ch1[idx]
+            ch_min = min(ch_min, ch.min())
+            ch_max = max(ch_max, ch.max())
+        output[t_int] = [ch_min, ch_max]
+    return output
+    
 
-#     def get_for_t(self, t):
-#         s_idx = np.floor(t/self.step_size)
-#         e_idx = np.ceil(t/self.step_size)
-#         if s_idx == e_idx:
-#             return self.normalization_dicts[int(s_idx)]
-#         else:
-#             s_dict = self.normalization_dicts[int(s_idx)]
-#             e_dict = self.normalization_dicts[int(e_idx)]
-#             w = (t - s_idx*self.step_size)/self.step_size
-#             # print(s_idx, e_idx,t, w)
-#             return {k: (1-w)*s_dict[k] + (w)*e_dict[k] for k in s_dict.keys()}
-    
-#     def normalize_input(self, img, t):
-#         norm_dict = self.get_for_t(t)
-#         return (img - norm_dict['mean_input'])/norm_dict['std_input']
-    
 class TimePredictorDataset(SplitDataset):
     def __init__(self, *args, **kwargs):
         if 'step_size' in kwargs:
@@ -43,11 +33,20 @@ class TimePredictorDataset(SplitDataset):
         else:
             self._gaussian_noise_std_factor = None
         super(TimePredictorDataset, self).__init__(*args, **kwargs)
-        self.normalization_dicts = []
+        self._num_timesteps = 100
+        self.input_normalization_dict = compute_input_normalization_dict(self._data_dict, self._num_timesteps, self._mean_target, self._std_target)
         # self.normalizer = Normalizer(self._data_dict, self._max_qval, step_size= step_size)
         if self._gaussian_noise_std_factor is not None:
             print("Adding Gaussian noise with std factor: ", self._gaussian_noise_std_factor)
         
+    def sample_t(self):
+        t_int = np.random.randint(0, self._num_timesteps)
+        return t_int/self._num_timesteps, t_int
+
+    def min_max_normalize(self, img, t_int):
+        t_min, t_max = self.input_normalization_dict[t_int]
+        return 2*(img - t_min)/(t_max - t_min) -1
+    
     def __getitem__(self, index):
         
         frame_idx, h_idx, w_idx = self._get_location(index)    
@@ -76,8 +75,11 @@ class TimePredictorDataset(SplitDataset):
         target = np.stack([patch1, patch2], axis=0)
         target = self.normalize_target(target)
         patch1, patch2 = target[0], target[1]
-        t = np.random.rand()
+        
+        t, t_int = self.sample_t()
         inp = t*patch1 + (1-t)*patch2
+        inp = self.min_max_normalize(inp, t_int)
+
         if inp.ndim == 2:
             inp = inp[None]
         
@@ -97,7 +99,7 @@ if __name__ == "__main__":
     patch_size = 512
     data_type = 'Hagen'
     nC = 1 if data_type == 'Hagen' else 3
-    channel_weights = [1,0.3]
+    channel_weights = [1,1.0]
     dataset = TimePredictorDataset(data_type, data_location, patch_size, 
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=False,
@@ -107,7 +109,7 @@ if __name__ == "__main__":
     for i in range(len(dataset)):
         img, t = dataset[i]
         if img.max() > 0:
-            print(img.max(), t)
+            print(img.min(),img.max(), t)
     
     print(len(dataset))
     img, t = dataset[10]
