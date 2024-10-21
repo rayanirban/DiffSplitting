@@ -30,7 +30,7 @@
             "num_workers": 4,
             "use_shuffle": true,
             "uncorrelated_channels": false,
-            "gaussian_noise_std_factor": 0.05
+            "gaussian_noise_std_factor": 0.01
         },
         "val": {
             "name": "Hagen",
@@ -66,7 +66,7 @@
                 // 16
             ],
             "res_blocks": 1,
-            "dropout": 0.2
+            "dropout": 0.05
         }
     },
     "train": {
