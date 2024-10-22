@@ -5,6 +5,7 @@ Here, we have two indi models. We also learn a learnable transformation paramete
 from model.ddpm_modules.indi import InDI
 import torch.nn as nn
 import torch
+from core.n2v_utils import update_input_for_n2v
 
 class IndiCustomT(InDI):
     def sample_t(self, batch_size, device):
@@ -51,6 +52,8 @@ class JointIndi(nn.Module):
         val_schedule_opt=None,
         w_input_loss = 0.0,
         e = 0.01,
+        n2v_p =0.0,
+        n2v_kernel_size = 5,
         allow_full_translation=False,
     ):
         super().__init__()
@@ -82,6 +85,8 @@ class JointIndi(nn.Module):
         self.offset_param = nn.Parameter(torch.tensor(0.0))
         self.scale_param = nn.Parameter(torch.tensor(1.0))
         self.w_input_loss = w_input_loss
+        self.n2v_p = n2v_p
+        self.n2v_kernel_size = n2v_kernel_size
         self.current_log_dict = {}
 
         print(f'[{self.__class__.__name__}]: w_input_loss: {self.w_input_loss}')
@@ -98,10 +103,14 @@ class JointIndi(nn.Module):
     def get_current_log(self):
         return self.current_log_dict
     
-    
+
     def p_losses(self, x_in, noise=None):
         x_in_ch1 = {'target': x_in['target'][:,0:1], 'input': x_in['target'][:,1:2]}
         x_in_ch2 = {'target': x_in['target'][:,1:2], 'input': x_in['target'][:,0:1]}
+
+        if self.n2v_p > 0.0:
+            update_input_for_n2v(x_in_ch1, self.n2v_kernel_size, self.n2v_p)
+            update_input_for_n2v(x_in_ch2, self.n2v_kernel_size, self.n2v_p)
 
         x_recon_ch1 = self.indi1.get_prediction_during_training(x_in_ch1, noise=noise)    
         x_recon_ch2 = self.indi2.get_prediction_during_training(x_in_ch2, noise=noise)

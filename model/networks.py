@@ -109,6 +109,8 @@ def define_G(opt):
         netG_class = JointIndi
         unet_class = UNetDdpm
         model_kwargs['allow_full_translation'] = model_opt.get('allow_full_translation', False)
+        model_kwargs['n2v_p'] = model_opt.get('n2v_p', 0.0)
+        model_kwargs['n2v_kernel_size'] = model_opt.get('n2v_kernel_size', 5)
     else:
         raise NotImplementedError(
             'Generator model [{:s}] not recognized'.format(model_opt['which_model_G']))
