@@ -58,7 +58,6 @@ class JointIndi(nn.Module):
         assert denoise_fn_ch2 is not None, "denoise_fn_ch2 is not provided."
         assert denoise_fn is None, "denoise_fn is not needed."
         indi_class = IndiCustomT if not allow_full_translation else IndiFullTranslation
-        breakpoint()
         self.indi1 = indi_class(denoise_fn_ch1, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
