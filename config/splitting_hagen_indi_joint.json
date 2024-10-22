@@ -47,6 +47,7 @@
         "w_input_loss": 0.1,
         "lr_reduction": "mean",
         "finetune_norm": false,
+        "allow_full_translation": true,
         "unet": {
             "in_channel": 1, // target channel + input channel. it is so because the noise of the shape target is concatenated with the input
             "out_channel": 1,

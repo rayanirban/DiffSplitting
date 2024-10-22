@@ -20,6 +20,21 @@ class IndiCustomT(InDI):
         t[mask_for_max] = maxv
         return t / self.num_timesteps
 
+class IndiFullTranslation(InDI):
+    def sample_t(self, batch_size, device):
+        assert self._t_sampling_mode == 'linear_indi'
+        
+        # this 0.5 will be potentially changing the game. 
+        assert self.num_timesteps % 2 == 0, "num_timesteps should be even since we are dividing it by 2 in the next line."
+        maxv = int(self.num_timesteps * 0.5)
+        t = torch.randint(1, self.num_timesteps, (batch_size,),device=device).long()
+        alpha = 1/(self._linear_indi_a + 1)
+        probab = torch.rand(t.shape, device=device)
+        mask_for_max = probab > alpha
+        t[mask_for_max] = maxv
+        return t / self.num_timesteps
+
+
 class JointIndi(nn.Module):
     def __init__(
         self,
@@ -36,12 +51,15 @@ class JointIndi(nn.Module):
         val_schedule_opt=None,
         w_input_loss = 0.0,
         e = 0.01,
+        allow_full_translation=False,
     ):
         super().__init__()
         assert denoise_fn_ch1 is not None, "denoise_fn_ch1 is not provided."
         assert denoise_fn_ch2 is not None, "denoise_fn_ch2 is not provided."
         assert denoise_fn is None, "denoise_fn is not needed."
-        self.indi1 = IndiCustomT(denoise_fn_ch1, image_size, channels=channels, 
+        indi_class = IndiCustomT if not allow_full_translation else IndiFullTranslation
+        breakpoint()
+        self.indi1 = indi_class(denoise_fn_ch1, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 
@@ -50,7 +68,7 @@ class JointIndi(nn.Module):
                           val_schedule_opt=val_schedule_opt, 
                           e=e)
 
-        self.indi2 = IndiCustomT(denoise_fn_ch2, image_size, channels=channels, 
+        self.indi2 = indi_class(denoise_fn_ch2, image_size, channels=channels, 
                           loss_type=loss_type, 
                           out_channel = out_channel, 
                           lr_reduction=lr_reduction, 

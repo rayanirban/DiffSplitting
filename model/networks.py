@@ -108,6 +108,10 @@ def define_G(opt):
     elif model_opt['which_model_G'] == 'joint_indi':
         netG_class = JointIndi
         unet_class = UNetDdpm
+        model_kwargs['allow_full_translation'] = model_opt.get('allow_full_translation', False)
+    else:
+        raise NotImplementedError(
+            'Generator model [{:s}] not recognized'.format(model_opt['which_model_G']))
     
 
     if model_opt['which_model_G'] != 'joint_indi':
