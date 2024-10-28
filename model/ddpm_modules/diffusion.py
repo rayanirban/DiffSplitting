@@ -243,7 +243,7 @@ class GaussianDiffusion(nn.Module):
         return self.p_sample_loop((batch_size, channels, image_size, image_size), continous)
 
     @torch.no_grad()
-    def super_resolution(self, x_in,clip_denoised=True, continous=False):
+    def predict(self, x_in,clip_denoised=True, continous=False):
         return self.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous)
 
     @torch.no_grad()

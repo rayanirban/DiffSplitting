@@ -15,6 +15,18 @@ from predtiler.dataset import get_tiling_dataset, get_tile_manager
 # from tensorboardX import SummaryWriter
 import os
 import numpy as np
+import git
+
+def add_git_info(opt):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    repo = git.Repo(dir_path, search_parent_directories=True)
+    opt['git'] = {}
+    opt['git']['changedFiles'] = [item.a_path for item in repo.index.diff(None)]
+    opt['git']['branch'] = repo.active_branch.name
+    opt['git']['untracked_files'] = repo.untracked_files
+    opt['git']['latest_commit'] = repo.head.object.hexsha
+
+
 def get_datasets(opt, tiled_pred=False):
     patch_size = opt['datasets']['patch_size']
     target_channel_idx = opt['datasets'].get('target_channel_idx', None)
@@ -95,6 +107,7 @@ if __name__ == "__main__":
     # Initialize WandbLogger
     if opt['enable_wandb']:
         import wandb
+        add_git_info(opt)
         wandb_logger = WandbLogger(opt, opt['path']['experiment_root'], opt['experiment_name'])
         wandb.define_metric('validation/val_step')
         wandb.define_metric('epoch')

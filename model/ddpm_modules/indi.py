@@ -101,7 +101,7 @@ class InDI(GaussianDiffusion):
         b = x_in.shape[0]
         
         x_in = torch.cat([x_in]*self.out_channel, dim=1)
-        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([1.0]).to(device))
+        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([t_float_start]).to(device))
         ret_img = img
         
         t_max = t_float_start
