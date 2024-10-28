@@ -64,10 +64,10 @@ class DDPM(BaseModel):
         self.netG.eval()
         with torch.no_grad():
             if isinstance(self.netG, nn.DataParallel):
-                self.prediction = self.netG.module.super_resolution(
+                self.prediction = self.netG.module.predict(
                     self.data['input'], clip_denoised=clip_denoised,continous=continous)
             else:
-                self.prediction = self.netG.super_resolution(
+                self.prediction = self.netG.predict(
                     self.data['input'],clip_denoised=clip_denoised,continous=continous)
         self.netG.train()
 

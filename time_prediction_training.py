@@ -14,6 +14,7 @@ from tqdm import tqdm
 import numpy as np
 from core.logger import mkdirs
 import os
+from split import add_git_info
 
 
 def get_datasets(opt, tiled_pred=False):
@@ -64,6 +65,7 @@ def get_datasets(opt, tiled_pred=False):
 def start_training(opt):
     if opt['enable_wandb']:
         import wandb
+        add_git_info(opt)
         wandb_logger = WandbLogger(opt, opt['path']['experiment_root'], opt['experiment_name'])
         # wandb.define_metric('validation/val_step')
         # wandb.define_metric('epoch')
