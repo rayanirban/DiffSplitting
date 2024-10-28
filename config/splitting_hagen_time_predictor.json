@@ -30,7 +30,7 @@
             "num_workers": 4,
             "use_shuffle": true,
             "uncorrelated_channels": false,
-            "gaussian_noise_std_factor": 0.05
+            "gaussian_noise_std_factor": 0.02
         },
         "val": {
             "name": "Hagen",
