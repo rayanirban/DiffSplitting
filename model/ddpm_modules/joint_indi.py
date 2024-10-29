@@ -135,10 +135,18 @@ class JointIndi(nn.Module):
         assert not (for_ch1 and for_ch2), "Either for_ch1 or for_ch2 should be True."
         ch1_new_estimate = ch2_new_estimate = None
         if for_ch1:
+            if t_cur ==0:
+                assert len(ch1_estimate) == 1
+                return {'ch1':ch1_estimate[0], 'ch2': None}
+            
             x_in_ch1 = ch1_estimate * (1-t_cur) + ch2_estimate * t_cur
             # TODO: add normalization here. 
             ch1_new_estimate = self.indi1.p_sample_loop(x_in_ch1, clip_denoised=clip_denoised, continous=False, num_timesteps=1, t_float_start=t_cur)
         if for_ch2:
+            if t_cur ==0:
+                assert len(ch2_estimate) == 1
+                return {'ch1':None, 'ch2': ch2_estimate[0]}
+            
             x_in_ch2 = ch2_estimate * (1-t_cur) + ch1_estimate * t_cur
             # TODO: add normalization here. 
             ch2_new_estimate = self.indi2.p_sample_loop(x_in_ch2, clip_denoised=clip_denoised, continous=False, num_timesteps=1, t_float_start=t_cur)
