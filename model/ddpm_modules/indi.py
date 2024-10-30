@@ -86,12 +86,18 @@ class InDI(GaussianDiffusion):
             
             return data_component + noise_component
 
+
     @torch.no_grad()
-    def p_sample_loop(self, x_in, clip_denoised=True, continous=False, num_timesteps=None, t_float_start=1.0, eps=1e-8):
-        """
-        Args:
-            t_float_start: float. It is the t corresponding to x_in. By default, it is 1.0.
-        """
+    def inference_one_step(self, x_t, delta_t, t_cur):
+        assert delta_t <= t_cur, "delta_t should be less than or equal to t_cur."
+        t_cur = torch.Tensor([t_cur]).to(x_t.device)
+        x_0 = self.denoise_fn(x_t, t_cur)
+        noise = torch.randn_like(x_t) * self.get_t_times_e(t_cur-delta_t)
+        x_prev_t = delta_t/t_cur * x_0 + (1 - delta_t/t_cur) * x_t + noise
+        return x_prev_t
+
+    @torch.no_grad()
+    def inference(self, x_in, continuous=False, num_timesteps=None, t_float_start=1.0, eps=1e-8):
         if num_timesteps is None:
             num_timesteps = self.num_timesteps
 
@@ -99,26 +105,23 @@ class InDI(GaussianDiffusion):
         sample_inter = (1 | (num_timesteps//20))
         assert self.conditional is False
         b = x_in.shape[0]
-        
         x_in = torch.cat([x_in]*self.out_channel, dim=1)
-        img = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([t_float_start]).to(device))
-        ret_img = img
         
-        t_max = t_float_start
-        step_size = t_max / num_timesteps
-        t_min = step_size
-        t_values = np.arange(t_max, t_min-eps, -1*step_size)
-        for idx, t_val in tqdm(enumerate(t_values), desc='sampling loop time step', total=num_timesteps):
-            img = self.p_sample(img, torch.full((b,), t_val, device=device, dtype=torch.float32), 
-                                step_size=step_size, clip_denoised=clip_denoised, num_timesteps=num_timesteps)
-            if idx % sample_inter == 0:
-                ret_img = torch.cat([ret_img, img], dim=0)
+        x_t = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([t_float_start]).to(device))
+        delta = t_float_start / num_timesteps
+        cur_t = t_float_start
+        ret_img = x_t
+        for idx in tqdm(range(num_timesteps), desc='inference time step'):
+            x_t = self.inference_one_step(x_t, delta, cur_t)
+            cur_t -= delta
+            if idx % sample_inter == 0 or idx == num_timesteps-1:
+                ret_img = torch.cat([ret_img, x_t], dim=0)
         
-        assert img.shape[0] == 1
-        if continous:
+        if continuous:
             return ret_img
         else:
-            return ret_img[-1]
+            return ret_img[-1:]
+    
 
     def get_e(self, t):
         # TODO: for brownian motion, this will change.
@@ -129,9 +132,6 @@ class InDI(GaussianDiffusion):
             return self.e/torch.sqrt(t)
         
     def get_t_times_e(self, t):
-        # TODO: for brownian motion, this will change.
-        # TODO: the problem is that for brownian motion, we have /sqrt(t). so, it is not defined for t=0.
-        # so, this function may be needed. 
         if self._noise_mode in ['gaussian', 'none']:
             return self.e * t
         elif self._noise_mode == 'brownian':
@@ -143,9 +143,6 @@ class InDI(GaussianDiffusion):
         channels = self.channels
         return self.p_sample_loop((batch_size, channels, image_size, image_size), continous)
 
-    @torch.no_grad()
-    def super_resolution(self, x_in,clip_denoised=True, continous=False):
-        return self.p_sample_loop(x_in, clip_denoised=clip_denoised, continous=continous, num_timesteps=self.val_num_timesteps)
 
     @torch.no_grad()
     def interpolate(self, x1, x2, t=None, lam=0.5):

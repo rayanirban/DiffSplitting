@@ -119,38 +119,6 @@ class JointIndi(nn.Module):
         self.current_log_dict['scale'] = self.get_scale().item()
         return loss_splitting + self.w_input_loss*loss_input
     
-    # @torch.no_grad()
-    # def sample(self, batch_size=1, continous=False):
-    #     image_size = self.image_size
-    #     ch1 = self.indi1.p_sample_loop((batch_size, 1, image_size, image_size), continous)
-    #     ch2 = self.indi2.p_sample_loop((batch_size, 1, image_size, image_size), continous)
-    #     return torch.cat([ch1, ch2], dim=0)
-    
-    @torch.no_grad()
-    def predict_one_step(self, ch1_estimate, ch2_estimate, t_cur, for_ch1=False, for_ch2=False, clip_denoised=True):
-        """
-            When t_cur goes to 0, you get more and more the estimate for which for_ch1 or for_ch2 is True.
-        """
-        assert for_ch1 or for_ch2, "Either for_ch1 or for_ch2 should be True."
-        assert not (for_ch1 and for_ch2), "Either for_ch1 or for_ch2 should be True."
-        ch1_new_estimate = ch2_new_estimate = None
-        if for_ch1:
-            if t_cur ==0:
-                assert len(ch1_estimate) == 1
-                return {'ch1':ch1_estimate[0], 'ch2': None}
-            
-            x_in_ch1 = ch1_estimate * (1-t_cur) + ch2_estimate * t_cur
-            # TODO: add normalization here. 
-            ch1_new_estimate = self.indi1.p_sample_loop(x_in_ch1, clip_denoised=clip_denoised, continous=False, num_timesteps=1, t_float_start=t_cur)
-        if for_ch2:
-            if t_cur ==0:
-                assert len(ch2_estimate) == 1
-                return {'ch1':None, 'ch2': ch2_estimate[0]}
-            
-            x_in_ch2 = ch2_estimate * (1-t_cur) + ch1_estimate * t_cur
-            # TODO: add normalization here. 
-            ch2_new_estimate = self.indi2.p_sample_loop(x_in_ch2, clip_denoised=clip_denoised, continous=False, num_timesteps=1, t_float_start=t_cur)
-        return {'ch1': ch1_new_estimate, 'ch2': ch2_new_estimate}
 
     def _get_t_values(self, t_start, num_timesteps, eps=1e-8):
         t_max = t_start
@@ -159,60 +127,12 @@ class JointIndi(nn.Module):
         t_values = np.arange(t_max-step_size, t_min-eps, -1*step_size)
         return t_values
     
+
     @torch.no_grad()
-    def predict(self, x_in,clip_denoised=True, continous=False, t_float_start=0.5, num_timesteps=None, eps=1e-8):
-        if num_timesteps is None:
-            num_timesteps = self.val_num_timesteps
-
-        sample_inter = (1 | (num_timesteps//20))
-        ch1_t_start = t_float_start
-        ch2_t_start = 1-t_float_start
-        ch1_estimate = self.predict_one_step(x_in, x_in, ch1_t_start, for_ch1=True, clip_denoised=clip_denoised)['ch1']
-        ch2_estimate = self.predict_one_step(x_in, x_in, ch2_t_start, for_ch2=True, clip_denoised=clip_denoised)['ch2']
-        
-        ch1_estimate = ch1_estimate[None]
-        ch2_estimate = ch2_estimate[None]
-        
-        ch1_iterative_estimates = ch1_estimate
-        ch2_iterative_estimates = ch2_estimate
-
-        if num_timesteps == 1:
-            return torch.cat([ch1_iterative_estimates, ch2_iterative_estimates], dim=1)
-        
-        ch1_t_values = self._get_t_values(ch1_t_start, num_timesteps, eps=eps)
-        ch2_t_values = self._get_t_values(ch2_t_start, num_timesteps, eps=eps)
-        for idx, tval in enumerate(zip(ch1_t_values, ch2_t_values)):
-            ch1_t, ch2_t = tval
-            ch1_estimate = self.predict_one_step(ch1_estimate, ch2_estimate, ch1_t, for_ch1=True, clip_denoised=clip_denoised)['ch1']
-            ch2_estimate = self.predict_one_step(ch1_estimate, ch2_estimate, ch2_t, for_ch2=True, clip_denoised=clip_denoised)['ch2']
-            ch1_estimate = ch1_estimate[None]
-            ch2_estimate = ch2_estimate[None]
-            if idx % sample_inter == 0:
-                ch1_iterative_estimates = torch.cat([ch1_iterative_estimates, ch1_estimate], dim=0)
-                ch2_iterative_estimates = torch.cat([ch2_iterative_estimates, ch2_estimate], dim=0)
-        
-        if continous:
-            return torch.cat([ch1_iterative_estimates, ch2_iterative_estimates], dim=1)
-        else:
-            return torch.cat([ch1_iterative_estimates[-1:], ch2_iterative_estimates[-1:]], dim=1)
-
-        # ch1 = ch2 = None
-        # x_in_ch1 = x_in_ch2 = None
-        # for t_float in t_values:
-        #     if ch1 is None:
-        #         x_in_ch1 = x_in
-        #         x_in_ch2 = x_in
-        #     else:
-        #         x_in_ch1 = ch1* (1-t_float) + x_in_ch2 * (1-t_float)
-        #         x_in_ch2 = ch2* (1-t_float) + x_in_ch1 * (1-t_float)
-
-        #     ch1 = self.indi1.p_sample_loop(x_in_ch1, clip_denoised=clip_denoised, continous=continous, num_timesteps=1, t_float_start=t_float)
-        #     ch2 = self.indi2.p_sample_loop(x_in_ch2, clip_denoised=clip_denoised, continous=continous, num_timesteps=1, t_float_start=t_float)
-
-        # if len(x_in.shape) == 4 and len(ch1.shape) == 3:
-        #     ch1 = ch1[None]
-        #     ch2 = ch2[None]
-        # return torch.cat([ch1, ch2], dim=1)
+    def inference(self, x_in, continuous=False, num_timesteps=None, t_float_start=0.5, eps=1e-8):
+        ch1 = self.indi1.inference(x_in, continuous=continuous, num_timesteps=num_timesteps, t_float_start=t_float_start, eps=eps)
+        ch2 = self.indi2.inference(x_in, continuous=continuous, num_timesteps=num_timesteps, t_float_start=1-t_float_start, eps=eps)
+        return torch.cat([ch1, ch2], dim=1)
 
 
     def forward(self, x, *args, **kwargs):

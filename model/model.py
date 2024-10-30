@@ -60,15 +60,19 @@ class DDPM(BaseModel):
         for k, v in diffusion_log.items():
             self.log_dict[k] = v
 
-    def test(self, continous=False, clip_denoised=True):
+    def test(self, continuous=False, clip_denoised=True):
         self.netG.eval()
         with torch.no_grad():
             if isinstance(self.netG, nn.DataParallel):
-                self.prediction = self.netG.module.predict(
-                    self.data['input'], clip_denoised=clip_denoised,continous=continous)
+                self.prediction = self.netG.module.inference(
+                    self.data['input'], 
+                    # clip_denoised=clip_denoised,
+                    continuous=continuous)
             else:
-                self.prediction = self.netG.predict(
-                    self.data['input'],clip_denoised=clip_denoised,continous=continous)
+                self.prediction = self.netG.inference(
+                    self.data['input'],
+                    # clip_denoised=clip_denoised,
+                    continuous=continuous)
         self.netG.train()
 
     def sample(self, batch_size=1, continous=False):
