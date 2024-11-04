@@ -1,3 +1,6 @@
+"""
+Adapted from https://github.com/zhuyr97/Reflection_RemoVal_CVPR2024/blob/main/datasets/datasets_pairs.py
+"""
 import torch,os,random,glob,math
 import torch.nn as nn
 from PIL import Image
@@ -136,9 +139,10 @@ class my_dataset_wTxt(Dataset):
         self.crop_size = crop_size
 
     def __getitem__(self, index):
-        data_IN_A, data_GT_A, img_name_A = self.read_imgs_pair(self.imgs_in_A[index], self.imgs_gt_A[index],
+        data_IN_A, data_GT_A, _ = self.read_imgs_pair(self.imgs_in_A[index], self.imgs_gt_A[index],
                                                                self.train_transform, self.crop_size)
-        return data_IN_A, data_GT_A, img_name_A
+        output = {'input': data_IN_A, 'target': data_GT_A}
+        return output
 
     def read_imgs_pair(self, in_path, gt_path, transform, crop_size):
         in_img_path_A = in_path  #
@@ -149,9 +153,9 @@ class my_dataset_wTxt(Dataset):
 
         gt_img_A = np.array(Image.open(gt_img_path_A))
         data_IN_A, data_GT_A = transform(in_img_A, gt_img_A, crop_size)
-
         return data_IN_A, data_GT_A, img_name_A
-
+    
+    
     def augment_img(self, img, mode=0):
         """图片随机旋转"""
         if mode == 0:
@@ -392,17 +396,18 @@ if __name__ == '__main__':
     #     print(inputs.size(),label.size(), img_name)
 
     print('-=-=-' * 20)
-    root = 'D://Datasets//Reflection//Check_SIRR/'
-    root_txt = 'D://Datasets//Reflection//Check_SIRR//DeRef_USTC.txt'
-    root_txt1 = 'D://Datasets//Reflection//Check_SIRR//real_train.txt'
+    root = '/group/jug/ashesh/data/RRW/combined/RRWDatasets/'
+    root_txt = '/group/jug/ashesh/data/RRW/combined/RRWDatasets/DeRef_HZ2.txt'
+    # root_txt1 = 'D://Datasets//Reflection//Check_SIRR//real_train.txt'
 
     train_set_wTxt = my_dataset_wTxt(root, root_txt, crop_size=224, fix_sample_A=20, regular_aug=False)
-    train_set_wTxt1 = my_dataset_wTxt(root, root_txt1, crop_size=224, fix_sample_A=200, regular_aug=False)
+    # train_set_wTxt1 = my_dataset_wTxt(root, root_txt1, crop_size=224, fix_sample_A=200, regular_aug=False)
 
-    train_set = FusionDataset([train_set_wTxt, train_set_wTxt1], [0.7, 0.3])
-    train_loader_wTxt = DataLoader(train_set, batch_size=2, num_workers=4, shuffle=True, drop_last=False,
+    # train_set = FusionDataset([train_set_wTxt, train_set_wTxt1], [0.7, 0.3])
+    train_loader_wTxt = DataLoader(train_set_wTxt, batch_size=2, num_workers=4, shuffle=True, drop_last=False,
                                    pin_memory=True)
     for train_idx, train_data in enumerate(train_loader_wTxt):
-        inputs, label, img_name = train_data
+        data = train_data
+        inputs, label = data['input'], data['target']
         print('---------', train_idx)
-        print(inputs.size(), label.size(), img_name)
+        print(inputs.size(), label.size())
