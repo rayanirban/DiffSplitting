@@ -59,12 +59,18 @@ def load_paired_fnames(fpath):
     Returns a dicttionary of the following format:
         GT_fname: [input_fname1, input_fname2, ...]
     """
+    datadir = os.path.dirname(fpath)
     with open(fpath) as file:
         lines = [line.rstrip().replace("//","/") for line in file]
         data_dict = defaultdict(list)
         for line in lines:
             inpfname, targetfname = line.split(' ')
-            data_dict[targetfname].append(inpfname)
+            targetfpath = os.path.join(datadir, targetfname.strip('/'))
+            inp_fpath = os.path.join(datadir, inpfname.strip('/'))
+            if os.path.exists(targetfpath) and os.path.exists(inp_fpath):
+                data_dict[targetfname].append(inpfname)
+            else:
+                continue
     return data_dict    
 
 def save_train_val_test_split(outputdir, textfilesdir):

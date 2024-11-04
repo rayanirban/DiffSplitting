@@ -189,7 +189,8 @@ class InDI(GaussianDiffusion):
         x_start = x_in['target']
         x_end = x_in['input']
         # we want to make sure that the shape for x_end is the same as x_start.
-        x_end = torch.concat([x_end]*self.out_channel, dim=1)
+        factor = self.out_channel // x_end.shape[1]
+        x_end = torch.concat([x_end]*factor, dim=1)
         b, *_ = x_start.shape
         t_float = self.sample_t(b, x_start.device)
         

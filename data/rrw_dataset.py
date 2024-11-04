@@ -11,94 +11,6 @@ from torch.utils.data import Dataset,DataLoader
 
 
 
-class my_dataset(Dataset):
-    def __init__(self, rootA_in, rootA_label ,crop_size =256, fix_sample_A = 500, regular_aug =False):
-        super(my_dataset,self).__init__()
-
-        self.regular_aug = regular_aug
-        #in_imgs
-        self.fix_sample_A = fix_sample_A
-
-        in_files_A = os.listdir(rootA_in)
-        if self.fix_sample_A > len(in_files_A):
-            self.fix_sample_A = len(in_files_A)
-        in_files_A = random.sample(in_files_A, self.fix_sample_A)
-        self.imgs_in_A = [os.path.join(rootA_in, k) for k in in_files_A]
-        self.imgs_gt_A = [os.path.join(rootA_label, k) for k in in_files_A]#gt_imgs
-
-        len_imgs_in_A = len(self.imgs_in_A)
-        self.length = len_imgs_in_A
-        self.crop_size = crop_size
-    def __getitem__(self, index):
-        data_IN_A, data_GT_A, img_name_A = self.read_imgs_pair(self.imgs_in_A[index], self.imgs_gt_A[index],
-                                                               self.train_transform, self.crop_size)
-        return data_IN_A, data_GT_A, img_name_A
-
-    def read_imgs_pair(self,in_path, gt_path, transform, crop_size):
-        in_img_path_A = in_path  #
-        img_name_A = in_img_path_A.split('/')[-1]
-
-        in_img_A = np.array(Image.open(in_img_path_A))
-        gt_img_path_A = gt_path  # self.imgs_gt_A[index]
-
-        gt_img_A = np.array(Image.open(gt_img_path_A))
-        data_IN_A, data_GT_A = transform(in_img_A, gt_img_A, crop_size)
-
-        return data_IN_A, data_GT_A, img_name_A
-
-    def augment_img(self, img, mode=0):
-        """图片随机旋转"""
-        if mode == 0:
-            return img
-        elif mode == 1:
-            return np.flipud(np.rot90(img))
-        elif mode == 2:
-            return np.flipud(img)
-        elif mode == 3:
-            return np.rot90(img, k=3)
-        elif mode == 4:
-            return np.flipud(np.rot90(img, k=2))
-        elif mode == 5:
-            return np.rot90(img)
-        elif mode == 6:
-            return np.rot90(img, k=2)
-        elif mode == 7:
-            return np.flipud(np.flipud(np.rot90(img, k=3)))
-
-    def train_transform(self, img, label, patch_size=256):
-        """对图片和标签做一些数值处理"""
-        ih, iw,_ = img.shape
-
-        patch_size = patch_size
-        ix = random.randrange(0, max(0, iw - patch_size))
-        iy = random.randrange(0, max(0, ih - patch_size))
-        img = img[iy:iy + patch_size, ix: ix + patch_size]
-        label = label[iy:iy + patch_size, ix: ix + patch_size]
-
-        #print('debug',img.shape)
-        if self.regular_aug:
-            mode = random.randint(0, 7)
-            # img = np.expand_dims(img, axis=2)
-            # label = np.expand_dims(label, axis=2)
-            img = self.augment_img(img, mode=mode)
-            label = self.augment_img(label, mode=mode)
-            img = img.copy()
-            label = label.copy()
-
-        transform = transforms.Compose(
-            [
-                transforms.ToTensor(),
-            ]
-        )
-        img = transform(img)
-        label = transform(label)
-
-        return img, label
-
-    def __len__(self):
-        return len(self.imgs_in_A)
-
-
 def read_txt(txt_name = 'RealHaze.txt',sample_num=5000):
     path_in = []
     path_gt = []
@@ -124,9 +36,17 @@ class my_dataset_wTxt(Dataset):
         self.fix_sample_A = fix_sample_A
 
         in_files_A, gt_files_A = read_txt(rootA_txt, sample_num=self.fix_sample_A)  #os.listdir(rootA_in)
-        self.imgs_in_A = [rootA + k for k in in_files_A]#os.path.join(rootA_in, k)
-        self.imgs_gt_A = [rootA + k for k in gt_files_A]#gt_imgs  os.path.join(rootA_label
-
+        self.imgs_in_A = [os.path.join(rootA, k.strip('/')) for k in in_files_A]#os.path.join(rootA_in, k)
+        self.imgs_gt_A = [os.path.join(rootA,k.strip('/')) for k in gt_files_A]#gt_imgs  os.path.join(rootA_label
+        missing = 0
+        present = 0
+        for i in range(len(self.imgs_in_A)):
+            if not os.path.exists(self.imgs_in_A[i]) or not os.path.exists(self.imgs_gt_A[i]):
+                print('---',self.imgs_in_A[i],self.imgs_gt_A[i])
+                missing += 1
+            else:
+                present += 1
+        
         # in_files_A = os.listdir(rootA_in)
         # if self.fix_sample_A > len(in_files_A):
         #     self.fix_sample_A = len(in_files_A)
@@ -197,12 +117,11 @@ class my_dataset_wTxt(Dataset):
 
         transform = transforms.Compose(
             [
-                transforms.ToTensor(),
+                transforms.ToTensor(), # this also normalize the image to [0,1]
             ]
         )
         img = transform(img)
         label = transform(label)
-
         return img, label
 
     def __len__(self):
@@ -404,7 +323,7 @@ if __name__ == '__main__':
     # train_set_wTxt1 = my_dataset_wTxt(root, root_txt1, crop_size=224, fix_sample_A=200, regular_aug=False)
 
     # train_set = FusionDataset([train_set_wTxt, train_set_wTxt1], [0.7, 0.3])
-    train_loader_wTxt = DataLoader(train_set_wTxt, batch_size=2, num_workers=4, shuffle=True, drop_last=False,
+    train_loader_wTxt = DataLoader(train_set_wTxt, batch_size=2, num_workers=0, shuffle=True, drop_last=False,
                                    pin_memory=True)
     for train_idx, train_data in enumerate(train_loader_wTxt):
         data = train_data

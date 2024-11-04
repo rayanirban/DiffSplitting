@@ -7,6 +7,7 @@ import core.logger as Logger
 import core.metrics as Metrics
 from core.wandb_logger import WandbLogger
 from data.split_dataset import SplitDataset, DataLocation
+from data.rrw_dataset import my_dataset_wTxt as RRWDataset
 from data.split_dataset_tiledpred import SplitDatasetTiledPred
 
 from core.psnr import PSNR
@@ -36,39 +37,48 @@ def get_datasets(opt, tiled_pred=False):
 
     data_type = opt['datasets']['train']['name']  
     uncorrelated_channels = opt['datasets']['train']['uncorrelated_channels']
-    assert data_type in ['cifar10', 'Hagen']
-    if data_type == 'Hagen':
-        train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
-                                                        opt['datasets']['train']['datapath']['ch1']))
-        val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
-                                                        opt['datasets']['val']['datapath']['ch1']))
-    elif data_type == 'cifar10':
-        train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
-        val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
-    
-    input_from_normalized_target = opt['model']['which_model_G'] == 'joint_indi'
-    train_set = SplitDataset(data_type, train_data_location, patch_size, 
-                             target_channel_idx=target_channel_idx, 
-                                max_qval=max_qval, upper_clip=upper_clip,
-                                uncorrelated_channels=uncorrelated_channels,
-                                channel_weights=channel_weights,
-                             normalization_dict=None, enable_transforms=True,random_patching=True, input_from_normalized_target=input_from_normalized_target)
-
-    if not tiled_pred:
-        class_obj = SplitDataset 
+    assert data_type in ['cifar10', 'Hagen', "RRW"], "Only cifar10, Hagen and RRW datasets are supported"
+    if data_type == 'RRW':
+        rootdir = opt['datasets']['datapath']
+        train_fpath = os.path.join(rootdir, 'train.txt')
+        val_fpath = os.path.join(rootdir, 'val.txt')
+        datapath = os.path.join(rootdir, 'RRWDatasets')
+        train_set = RRWDataset(datapath, train_fpath, crop_size=patch_size, fix_sample_A=1e10, regular_aug=True)
+        val_set = RRWDataset(datapath, val_fpath, crop_size=patch_size, fix_sample_A=1e10, regular_aug=False)
+        return train_set, val_set
     else:
-        data_shape = (10, 2048, 2048)
-        tile_manager = get_tile_manager(data_shape, (1, patch_size//2, patch_size//2), (1, patch_size, patch_size))
-        class_obj = get_tiling_dataset(SplitDataset, tile_manager)
+        if data_type == 'Hagen':
+            train_data_location = DataLocation(channelwise_fpath=(opt['datasets']['train']['datapath']['ch0'],
+                                                            opt['datasets']['train']['datapath']['ch1']))
+            val_data_location = DataLocation(channelwise_fpath=(opt['datasets']['val']['datapath']['ch0'],
+                                                            opt['datasets']['val']['datapath']['ch1']))
+        elif data_type == 'cifar10':
+            train_data_location = DataLocation(directory=(opt['datasets']['train']['datapath']))
+            val_data_location = DataLocation(directory=(opt['datasets']['val']['datapath']))
+        
+        input_from_normalized_target = opt['model']['which_model_G'] == 'joint_indi'
+        train_set = SplitDataset(data_type, train_data_location, patch_size, 
+                                target_channel_idx=target_channel_idx, 
+                                    max_qval=max_qval, upper_clip=upper_clip,
+                                    uncorrelated_channels=uncorrelated_channels,
+                                    channel_weights=channel_weights,
+                                normalization_dict=None, enable_transforms=True,random_patching=True, input_from_normalized_target=input_from_normalized_target)
 
-    val_set = class_obj(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
-                           normalization_dict=train_set.get_normalization_dict(),
-                           max_qval=max_qval,
-                            upper_clip=upper_clip,
-                            channel_weights=channel_weights,
-                           enable_transforms=False,
-                                                     random_patching=False, input_from_normalized_target=input_from_normalized_target)
-    return train_set, val_set
+        if not tiled_pred:
+            class_obj = SplitDataset 
+        else:
+            data_shape = (10, 2048, 2048)
+            tile_manager = get_tile_manager(data_shape, (1, patch_size//2, patch_size//2), (1, patch_size, patch_size))
+            class_obj = get_tiling_dataset(SplitDataset, tile_manager)
+
+        val_set = class_obj(data_type, val_data_location, patch_size, target_channel_idx=target_channel_idx,
+                            normalization_dict=train_set.get_normalization_dict(),
+                            max_qval=max_qval,
+                                upper_clip=upper_clip,
+                                channel_weights=channel_weights,
+                            enable_transforms=False,
+                                                        random_patching=False, input_from_normalized_target=input_from_normalized_target)
+        return train_set, val_set
 
 
 if __name__ == "__main__":
