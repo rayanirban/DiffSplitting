@@ -43,8 +43,9 @@ def get_datasets(opt, tiled_pred=False):
         train_fpath = os.path.join(rootdir, 'train.txt')
         val_fpath = os.path.join(rootdir, 'val.txt')
         datapath = os.path.join(rootdir, 'RRWDatasets')
-        train_set = RRWDataset(datapath, train_fpath, crop_size=patch_size, fix_sample_A=1e10, regular_aug=True)
-        val_set = RRWDataset(datapath, val_fpath, crop_size=patch_size, fix_sample_A=1e10, regular_aug=False)
+        nimgs = 1e8
+        train_set = RRWDataset(datapath, train_fpath, crop_size=patch_size, fix_sample_A=nimgs, regular_aug=True)
+        val_set = RRWDataset(datapath, val_fpath, crop_size=patch_size, fix_sample_A=nimgs, regular_aug=False)
         return train_set, val_set
     else:
         if data_type == 'Hagen':
@@ -186,7 +187,7 @@ if __name__ == "__main__":
                         if idx == 20:
                             break
                         diffusion.feed_data(val_data)
-                        diffusion.test(continous=False)
+                        diffusion.test(continuous=False)
                         visuals = diffusion.get_current_visuals()
                         # input, target, prediction = unnormalize_data(visuals,train_set.get_normalization_dict())
                         input = visuals['input'].cpu().numpy()

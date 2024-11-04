@@ -75,7 +75,8 @@ class my_dataset_wTxt(Dataset):
         data_IN_A, data_GT_A = transform(in_img_A, gt_img_A, crop_size)
         return data_IN_A, data_GT_A, img_name_A
     
-    
+    def get_normalization_dict(self):
+        return {'mean_target': 0.0, 'std_target': 255.0, 'mean_input': 0.0, 'std_input': 255.0}
     def augment_img(self, img, mode=0):
         """图片随机旋转"""
         if mode == 0:

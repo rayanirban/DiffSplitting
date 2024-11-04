@@ -105,7 +105,8 @@ class InDI(GaussianDiffusion):
         sample_inter = (1 | (num_timesteps//20))
         assert self.conditional is False
         b = x_in.shape[0]
-        x_in = torch.cat([x_in]*self.out_channel, dim=1)
+        factor = self.out_channel // x_in.shape[1]
+        x_in = torch.cat([x_in]*factor, dim=1)
         
         x_t = x_in + torch.randn_like(x_in)*self.get_t_times_e(torch.Tensor([t_float_start]).to(device))
         delta = t_float_start / num_timesteps
