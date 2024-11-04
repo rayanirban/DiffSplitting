@@ -1,3 +1,8 @@
+"""
+In this script, the aim is to split the data into train, val, and test sets.
+To do this, we split the ground truth images into three sets: train, val, and test.
+The splitting is done randomly.
+"""
 from collections import defaultdict
 import os
 import numpy as np
