@@ -19,8 +19,12 @@ class TimePredictor(nn.Module):
         attn_res=(8,),
         res_blocks=3,
         dropout=0,
-        image_size=128
+        image_size=128,
+        unreal_t_enabled=False,
         ):
+        """
+        Where unreal_t_enabled=True, we need to predict negative t values and values of t greater than 1. So, relu needs to be removed.
+        """
         super().__init__()
         self.unet = UNet(in_channel=in_channel, 
                          out_channel=out_channel, 
@@ -32,12 +36,14 @@ class TimePredictor(nn.Module):
                             dropout=dropout,
                             image_size=image_size,
                          with_time_emb=False)
-        
+        self.unreal_t_enabled = unreal_t_enabled
         self.foreground_mask = ForegroundMask(in_channel, out_channel)
 
     def forward(self, x):
         out = self.unet(x, None)
-        out = nn.functional.relu(out)
+        if self.unreal_t_enabled is False:
+            out = nn.functional.relu(out)
+        
         attention = self.foreground_mask(x)
         out = out * attention
         out = out.reshape(out.shape[0], -1)

@@ -39,14 +39,15 @@ def get_datasets(opt, tiled_pred=False):
         raise ValueError('Invalid data type')
     
     gaussian_noise_std_factor = opt['datasets']['train'].get('gaussian_noise_std_factor', None)
-
+    sample_t_unreal_offset = opt['datasets'].get('sample_t_unreal_offset', 0.0)
     train_set = TimePredictorDataset(data_type, train_data_location, patch_size, 
                              target_channel_idx=target_channel_idx, 
                                 max_qval=max_qval, upper_clip=upper_clip,
                                 uncorrelated_channels=uncorrelated_channels,
                                 channel_weights=channel_weights,
                              normalization_dict=None, enable_transforms=True,random_patching=True,
-                             gaussian_noise_std_factor=gaussian_noise_std_factor,)
+                             gaussian_noise_std_factor=gaussian_noise_std_factor,
+                             sample_t_unreal_offset=sample_t_unreal_offset)
 
     if not tiled_pred:
         class_obj = TimePredictorDataset 
@@ -76,6 +77,8 @@ def start_training(opt):
 
     train_set, val_set = get_datasets(opt, tiled_pred=False)
     model_opt = opt['model']
+    sample_t_unreal_offset = opt['datasets'].get('sample_t_unreal_offset', None)
+    unreal_t_enabled = sample_t_unreal_offset is not None
     model = TimePredictor(
         in_channel=model_opt['unet']['in_channel'],
         out_channel=model_opt['unet']['out_channel'],
@@ -86,6 +89,7 @@ def start_training(opt):
         res_blocks=model_opt['unet']['res_blocks'],
         dropout=model_opt['unet']['dropout'],
         image_size=opt['datasets']['patch_size'],
+        unreal_t_enabled=unreal_t_enabled,
         )
     model = model.cuda()
 

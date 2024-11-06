@@ -3,13 +3,13 @@ import numpy as np
 from tqdm import tqdm
 from data.split_dataset import SplitDataset, compute_normalization_dict, DataLocation
 
-def compute_input_normalization_dict(data_dict, n_timesteps, mean_target, std_target):
+def compute_input_normalization_dict(data_dict, n_timesteps, mean_target, std_target, t_min_float=0.0, t_max_float=1.0):
     mean_ch0, mean_ch1 = mean_target.squeeze()
     std_ch0, std_ch1 = std_target.squeeze()
     ch0 = [(x - mean_ch0)/std_ch0 for x in data_dict[0]]
     ch1 = [(x - mean_ch1)/std_ch1 for x in data_dict[1]]
     output = {}
-    for t_int in tqdm(np.arange(0,n_timesteps+1)):
+    for t_int in tqdm(np.arange(int(n_timesteps*t_min_float),int(n_timesteps*(t_max_float)))):
         t = t_int/n_timesteps
         ch_min = 1e10
         ch_max = -1e10
@@ -23,24 +23,30 @@ def compute_input_normalization_dict(data_dict, n_timesteps, mean_target, std_ta
 
 class TimePredictorDataset(SplitDataset):
     def __init__(self, *args, **kwargs):
-        if 'step_size' in kwargs:
-            step_size = kwargs.pop('step_size')
-        else:
-            step_size = 0.05
-        
         if 'gaussian_noise_std_factor' in kwargs:
             self._gaussian_noise_std_factor = kwargs.pop('gaussian_noise_std_factor')
         else:
             self._gaussian_noise_std_factor = None
+
+        if 'sample_t_unreal_offset' in kwargs:
+            self._sample_t_unreal_offset = kwargs.pop('sample_t_unreal_offset')
+        else:
+            self._sample_t_unreal_offset= 0.0
+
         super(TimePredictorDataset, self).__init__(*args, **kwargs)
-        self._num_timesteps = 100
-        self.input_normalization_dict = compute_input_normalization_dict(self._data_dict, self._num_timesteps, self._mean_target, self._std_target)
+        self._num_timesteps = 20
+        t_min_float = -self._sample_t_unreal_offset
+        t_max_float = 1.0 + self._sample_t_unreal_offset
+        self.input_normalization_dict = compute_input_normalization_dict(self._data_dict, self._num_timesteps, self._mean_target, self._std_target, t_min_float=t_min_float, 
+                                                                         t_max_float=t_max_float)
         # self.normalizer = Normalizer(self._data_dict, self._max_qval, step_size= step_size)
         if self._gaussian_noise_std_factor is not None:
             print("Adding Gaussian noise with std factor: ", self._gaussian_noise_std_factor)
         
     def sample_t(self):
-        t_int = np.random.randint(0, self._num_timesteps)
+        t_min = -int(self._num_timesteps*self._sample_t_unreal_offset)
+        t_max = self._num_timesteps + int(self._num_timesteps*self._sample_t_unreal_offset)
+        t_int = np.random.randint(t_min, t_max)
         return t_int/self._num_timesteps, t_int
 
     def min_max_normalize(self, img, t_int):
@@ -99,13 +105,15 @@ if __name__ == "__main__":
     patch_size = 512
     data_type = 'Hagen'
     nC = 1 if data_type == 'Hagen' else 3
-    channel_weights = [1,1.0]
+    channel_weights = [1.0,1.0]
+    sample_t_unreal_offset = 0.1
     dataset = TimePredictorDataset(data_type, data_location, patch_size, 
                                 max_qval=0.98, upper_clip=True,
                              normalization_dict=None, enable_transforms=False,
                              channel_weights=channel_weights,
                              uncorrelated_channels=False, random_patching=False,
-                             step_size=0.25)
+                             sample_t_unreal_offset=sample_t_unreal_offset,
+                             )
     for i in range(len(dataset)):
         img, t = dataset[i]
         if img.max() > 0:

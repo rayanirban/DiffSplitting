@@ -17,6 +17,7 @@
         "upper_clip": false,
         "patch_size": 512,
         "max_qval": 0.995,
+        "sample_t_unreal_offset": 0.1,
         "channel_weights": [1.0, 1.0],
         "train": {
             "name": "Hagen",
