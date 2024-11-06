@@ -9,7 +9,7 @@ def compute_input_normalization_dict(data_dict, n_timesteps, mean_target, std_ta
     ch0 = [(x - mean_ch0)/std_ch0 for x in data_dict[0]]
     ch1 = [(x - mean_ch1)/std_ch1 for x in data_dict[1]]
     output = {}
-    for t_int in tqdm(np.arange(int(n_timesteps*t_min_float),int(n_timesteps*(t_max_float)))):
+    for t_int in tqdm(np.arange(int(n_timesteps*t_min_float),1+int(n_timesteps*(t_max_float)))):
         t = t_int/n_timesteps
         ch_min = 1e10
         ch_max = -1e10
