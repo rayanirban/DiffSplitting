@@ -43,7 +43,7 @@ def get_datasets(opt, tiled_pred=False):
         train_fpath = os.path.join(rootdir, 'train.txt')
         val_fpath = os.path.join(rootdir, 'val.txt')
         datapath = os.path.join(rootdir, 'RRWDatasets')
-        nimgs = 1e8
+        nimgs = 2000
         train_set = RRWDataset(datapath, train_fpath, crop_size=patch_size, fix_sample_A=nimgs, regular_aug=True)
         val_set = RRWDataset(datapath, val_fpath, crop_size=patch_size, fix_sample_A=nimgs, regular_aug=False)
         return train_set, val_set

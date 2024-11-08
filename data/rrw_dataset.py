@@ -8,6 +8,8 @@ import numpy as np
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset,DataLoader
+import functools
+
 
 
 
@@ -64,14 +66,19 @@ class my_dataset_wTxt(Dataset):
         output = {'input': data_IN_A, 'target': data_GT_A}
         return output
 
+    @functools.lru_cache(maxsize=4000)
+    def read_img(self, img_path):
+        img = Image.open(img_path)
+        return np.array(img)
+    
     def read_imgs_pair(self, in_path, gt_path, transform, crop_size):
         in_img_path_A = in_path  #
         img_name_A = in_img_path_A.split('/')[-1]
 
-        in_img_A = np.array(Image.open(in_img_path_A))
+        in_img_A = self.read_img(in_img_path_A)
         gt_img_path_A = gt_path  # self.imgs_gt_A[index]
 
-        gt_img_A = np.array(Image.open(gt_img_path_A))
+        gt_img_A = self.read_img(gt_img_path_A)
         data_IN_A, data_GT_A = transform(in_img_A, gt_img_A, crop_size)
         return data_IN_A, data_GT_A, img_name_A
     
