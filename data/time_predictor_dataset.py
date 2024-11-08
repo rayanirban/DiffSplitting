@@ -51,7 +51,7 @@ class TimePredictorDataset(SplitDataset):
             return t_int/self._num_timesteps, t_int
         elif self._sampling_strategy == 'focus_on_extremes':
             random_coin = np.random.rand()
-            dirac_delta_w = 0.3
+            dirac_delta_w = 0.2
             if random_coin < dirac_delta_w:
                 t_int = np.random.randint(0, int(self._num_timesteps*0.1))
             elif random_coin > 1 - dirac_delta_w:
