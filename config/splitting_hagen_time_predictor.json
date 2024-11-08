@@ -27,6 +27,7 @@
             },
             "datatype": "img", //lmdb or img, path of img files
             "batch_size": 8,
+            "t_sampling_strategy": "focus_on_extremes",
             "num_workers": 4,
             "use_shuffle": true,
             "uncorrelated_channels": false,

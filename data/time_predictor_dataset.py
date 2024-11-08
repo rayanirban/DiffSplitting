@@ -32,17 +32,35 @@ class TimePredictorDataset(SplitDataset):
             self._gaussian_noise_std_factor = kwargs.pop('gaussian_noise_std_factor')
         else:
             self._gaussian_noise_std_factor = None
+
+        if 't_sampling_strategy' in kwargs:
+            self._sampling_strategy = kwargs.pop('t_sampling_strategy')
+        else:
+            self._sampling_strategy = 'uniform'
         super(TimePredictorDataset, self).__init__(*args, **kwargs)
         self._num_timesteps = 100
         self.input_normalization_dict = compute_input_normalization_dict(self._data_dict, self._num_timesteps, self._mean_target, self._std_target)
+        assert self._sampling_strategy in ['uniform', 'focus_on_extremes']
         # self.normalizer = Normalizer(self._data_dict, self._max_qval, step_size= step_size)
         if self._gaussian_noise_std_factor is not None:
             print("Adding Gaussian noise with std factor: ", self._gaussian_noise_std_factor)
         
     def sample_t(self):
-        t_int = np.random.randint(0, self._num_timesteps)
-        return t_int/self._num_timesteps, t_int
-
+        if self._sampling_strategy == 'uniform':
+            t_int = np.random.randint(0, self._num_timesteps)
+            return t_int/self._num_timesteps, t_int
+        elif self._sampling_strategy == 'focus_on_extremes':
+            random_coin = np.random.rand()
+            dirac_delta_w = 0.3
+            if random_coin < dirac_delta_w:
+                t_int = np.random.randint(0, int(self._num_timesteps*0.1))
+            elif random_coin > 1 - dirac_delta_w:
+                t_int = np.random.randint(int(self._num_timesteps*0.9), self._num_timesteps)
+            else:
+                t_int = np.random.randint(0, self._num_timesteps)
+            
+            return t_int/self._num_timesteps, t_int
+        
     def min_max_normalize(self, img, t_int):
         t_min, t_max = self.input_normalization_dict[t_int]
         return 2*(img - t_min)/(t_max - t_min) -1
