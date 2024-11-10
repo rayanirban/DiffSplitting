@@ -176,7 +176,7 @@ if __name__ == "__main__":
                         if idx == 20:
                             break
                         diffusion.feed_data(val_data)
-                        diffusion.test(continous=False)
+                        diffusion.test(continuous=False)
                         visuals = diffusion.get_current_visuals()
                         # input, target, prediction = unnormalize_data(visuals,train_set.get_normalization_dict())
                         input = visuals['input'].cpu().numpy()

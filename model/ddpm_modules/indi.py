@@ -33,7 +33,7 @@ class InDI(GaussianDiffusion):
         assert self._t_sampling_mode in ['uniform', 'linear_ramp', 'quadratic_ramp', 'linear_indi']
         self._linear_indi_a = 1.0
 
-        self._noise_mode = 'brownian'
+        self._noise_mode = 'gaussian'
         assert self._noise_mode in ['gaussian', 'brownian', 'none']
         if self._noise_mode == 'none':
             self.e = 0.0
@@ -58,34 +58,6 @@ class InDI(GaussianDiffusion):
     
     def p_mean_variance(self, x, t, clip_denoised: bool, condition_x=None):
         raise NotImplementedError("This is not needed.")
-
-    @torch.no_grad()
-    def p_sample(self, x, t_float, step_size=None, clip_denoised=True, num_timesteps=None, repeat_noise=False, condition_x=None):
-        if num_timesteps is None:
-            num_timesteps = self.num_timesteps
-
-        if step_size is None:
-            step_size = 1.0/ num_timesteps
-            
-        if t_float == 0:
-            return x
-
-        t_float = torch.Tensor([t_float]).to(x.device)
-        x0 = self.denoise_fn(x, t_float)
-        if clip_denoised:
-            x0.clamp_(-1., 1.)
-
-        if self._noise_mode in ['gaussian', 'none']:
-            return (step_size/t_float) * x0 + (1 - step_size/t_float) * x
-        elif self._noise_mode == 'brownian':
-            data_component = (step_size/t_float) * x0 + (1 - step_size/t_float) * x
-            if t_float <= step_size:
-                return data_component
-            delta_e = torch.sqrt(self.get_e(t_float-step_size)**2 - self.get_e(t_float)**2)
-            noise_component = torch.randn_like(x0) * (t_float - step_size) * delta_e
-            
-            return data_component + noise_component
-
 
     @torch.no_grad()
     def inference_one_step(self, x_t, delta_t, t_cur):
@@ -137,13 +109,6 @@ class InDI(GaussianDiffusion):
         elif self._noise_mode == 'brownian':
             return self.e * torch.sqrt(t)
     
-    @torch.no_grad()
-    def sample(self, batch_size=1, continous=False):
-        image_size = self.image_size
-        channels = self.channels
-        return self.p_sample_loop((batch_size, channels, image_size, image_size), continous)
-
-
     @torch.no_grad()
     def interpolate(self, x1, x2, t=None, lam=0.5):
         raise NotImplementedError("This is not needed.")
