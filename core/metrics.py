@@ -3,6 +3,7 @@ import math
 import numpy as np
 import cv2
 from torchvision.utils import make_grid
+from tifffile import imwrite
 
 
 def tensor2img(tensor, out_type=np.uint8, min_max=(-1, 1)):
@@ -45,6 +46,8 @@ def save_img(img, img_path, mode='RGB'):
             # HWC[RGB] -> # HCW[RGB]
             img = img.transpose((0,2,1,3))
             img = img.reshape((img.shape[0], img.shape[1]*img.shape[2], img.shape[3]))
+        elif mode=='TIFF':
+            img = img[0]
         else:
             img = img.transpose((1,0,2))
             img = img.reshape((img.shape[0], -1, 1))
@@ -55,8 +58,14 @@ def save_img(img, img_path, mode='RGB'):
 
     if mode=='RGB':
         cv2.imwrite(img_path, img.astype(np.uint8))
+    elif mode=='TIFF':
+        imwrite(img_path, img)
     else:  
         cv2.imwrite(img_path, img)
+        
+def save_tif(img, img_path):
+    img = img[0]
+    imwrite(img_path, img)
 
 
 def calculate_psnr(img1, img2):
